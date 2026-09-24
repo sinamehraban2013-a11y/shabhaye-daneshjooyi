@@ -16,7 +16,7 @@ dependencies:
   url_launcher: ^6.2.0
   syncfusion_flutter_pdfviewer: any
   intl: ^0.20.3
- url_launcher: ^6.2.4
+  url_launcher: ^6.2.4
   audioplayers: ^6.0.0
   
 flutter:
