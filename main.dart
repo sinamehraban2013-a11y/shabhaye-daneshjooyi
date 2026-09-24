@@ -1,4 +1,3 @@
-
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
@@ -8,6 +7,7 @@ import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 import 'package:syncfusion_flutter_pdfviewer/pdfviewer.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:audioplayers/audioplayers.dart';
 
 // ==========================================
 // تنظیمات گوگل درایو و اسکریپت
@@ -20,7 +20,7 @@ const String maghalehFolderId = '1SJ1dS0XAnXwr4WGQPwlcpUJCFDy_T2Ir';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
-  runApp(const MahfelOnsApp());
+  runApp(const ShabHayeDaneshjouyiApp());
 }
 
 class DriveItem {
@@ -37,14 +37,14 @@ class DriveItem {
   }
 }
 
-class MahfelOnsApp extends StatelessWidget {
-  const MahfelOnsApp({super.key});
+class ShabHayeDaneshjouyiApp extends StatelessWidget {
+  const ShabHayeDaneshjouyiApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'محفل اُنس',
+      title: 'شب‌های دانشجویی',
       locale: const Locale('fa', 'IR'),
       supportedLocales: const [Locale('fa', 'IR')],
       localizationsDelegates: const [
@@ -54,9 +54,13 @@ class MahfelOnsApp extends StatelessWidget {
       ],
       theme: ThemeData(
         useMaterial3: true,
-        scaffoldBackgroundColor: const Color(0xFF0B2B3A),
+        scaffoldBackgroundColor: const Color(0xFF1E1E2E), // پس‌زمینه تیره مدرن و شاداب
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: const Color(0xFFFF6B4A), // نارنجی-مرجانی گرم دانشجویی
+          brightness: Brightness.dark,
+        ),
         appBarTheme: const AppBarTheme(
-          backgroundColor: Color(0xFF0B2B3A),
+          backgroundColor: Color(0xFF181825),
           foregroundColor: Colors.white,
           elevation: 0,
         ),
@@ -77,7 +81,7 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   void initState() {
     super.initState();
-    Timer(const Duration(seconds: 4), () {
+    Timer(const Duration(seconds: 3), () {
       if (mounted) {
         Navigator.pushReplacement(
           context,
@@ -90,37 +94,40 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF0B2B3A),
+      backgroundColor: const Color(0xFF1E1E2E),
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Image.asset(
-              'assets/mahfel_ons_animation.gif',
-              width: 220,
-              height: 220,
-              errorBuilder: (context, error, stackTrace) => const Icon(
-                Icons.menu_book_rounded,
-                size: 100,
-                color: Color(0xFF1ABC9C),
+            Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFF6B4A).withOpacity(0.12),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.school_rounded,
+                size: 90,
+                color: Color(0xFFFF6B4A),
               ),
             ),
             const SizedBox(height: 24),
             const Text(
-              'محفلِ اُنس',
+              'شب‌های دانشجویی',
               style: TextStyle(
                 color: Colors.white,
-                fontSize: 26,
+                fontSize: 28,
                 fontWeight: FontWeight.bold,
                 letterSpacing: 1.2,
               ),
             ),
             const SizedBox(height: 8),
             const Text(
-              'تلاقیِ آگاهی و آرامش',
+              'تلاقیِ اندیشه، معرفت و پویایی',
               style: TextStyle(
-                color: Color(0xFF1ABC9C),
-                fontSize: 14,
+                color: Color(0xFFFFB300),
+                fontSize: 15,
+                fontWeight: FontWeight.w500,
               ),
             ),
           ],
@@ -156,6 +163,185 @@ class PdfViewerScreen extends StatelessWidget {
   }
 }
 
+// صفحه اختصاصی پخش فایل صوتی
+class AudioPlayerScreen extends StatefulWidget {
+  final File file;
+  final String title;
+
+  const AudioPlayerScreen({super.key, required this.file, required this.title});
+
+  @override
+  State<AudioPlayerScreen> createState() => _AudioPlayerScreenState();
+}
+
+class _AudioPlayerScreenState extends State<AudioPlayerScreen> {
+  late AudioPlayer _player;
+  bool _isPlaying = false;
+  Duration _duration = Duration.zero;
+  Duration _position = Duration.zero;
+
+  @override
+  void initState() {
+    super.initState();
+    _player = AudioPlayer();
+
+    _player.onPlayerStateChanged.listen((state) {
+      if (mounted) {
+        setState(() {
+          _isPlaying = state == PlayerState.playing;
+        });
+      }
+    });
+
+    _player.onDurationChanged.listen((newDuration) {
+      if (mounted) {
+        setState(() {
+          _duration = newDuration;
+        });
+      }
+    });
+
+    _player.onPositionChanged.listen((newPosition) {
+      if (mounted) {
+        setState(() {
+          _position = newPosition;
+        });
+      }
+    });
+
+    _player.play(DeviceFileSource(widget.file.path));
+  }
+
+  @override
+  void dispose() {
+    _player.dispose();
+    super.dispose();
+  }
+
+  String _formatDuration(Duration duration) {
+    String twoDigits(int n) => n.toString().padLeft(2, '0');
+    final hours = twoDigits(duration.inHours);
+    final minutes = twoDigits(duration.inMinutes.remainder(60));
+    final seconds = twoDigits(duration.inSeconds.remainder(60));
+    return duration.inHours > 0 ? '$hours:$minutes:$seconds' : '$minutes:$seconds';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('پخش سخنرانی', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+        centerTitle: true,
+      ),
+      body: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              width: 190,
+              height: 190,
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [Color(0xFFFF6B4A), Color(0xFFFF9E7A)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(30),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFFFF6B4A).withOpacity(0.35),
+                    blurRadius: 25,
+                    offset: const Offset(0, 10),
+                  ),
+                ],
+              ),
+              child: const Icon(Icons.graphic_eq_rounded, size: 90, color: Colors.white),
+            ),
+            const SizedBox(height: 36),
+            Text(
+              widget.title,
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.bold, height: 1.4),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+            const SizedBox(height: 30),
+            SliderTheme(
+              data: SliderTheme.of(context).copyWith(
+                thumbColor: const Color(0xFFFF6B4A),
+                activeTrackColor: const Color(0xFFFF6B4A),
+                inactiveTrackColor: Colors.white12,
+                thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 7),
+              ),
+              child: Slider(
+                min: 0,
+                max: _duration.inSeconds.toDouble() > 0 ? _duration.inSeconds.toDouble() : 1.0,
+                value: _position.inSeconds.toDouble().clamp(0.0, _duration.inSeconds.toDouble() > 0 ? _duration.inSeconds.toDouble() : 1.0),
+                onChanged: (value) async {
+                  await _player.seek(Duration(seconds: value.toInt()));
+                },
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(_formatDuration(_position), style: const TextStyle(color: Colors.white54, fontSize: 12)),
+                  Text(_formatDuration(_duration), style: const TextStyle(color: Colors.white54, fontSize: 12)),
+                ],
+              ),
+            ),
+            const SizedBox(height: 24),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                IconButton(
+                  iconSize: 34,
+                  color: Colors.white70,
+                  icon: const Icon(Icons.replay_10_rounded),
+                  onPressed: () {
+                    final target = _position - const Duration(seconds: 10);
+                    _player.seek(target < Duration.zero ? Duration.zero : target);
+                  },
+                ),
+                const SizedBox(width: 16),
+                CircleAvatar(
+                  radius: 36,
+                  backgroundColor: const Color(0xFFFF6B4A),
+                  child: IconButton(
+                    iconSize: 42,
+                    color: Colors.white,
+                    icon: Icon(_isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded),
+                    onPressed: () async {
+                      if (_isPlaying) {
+                        await _player.pause();
+                      } else {
+                        await _player.resume();
+                      }
+                    },
+                  ),
+                ),
+                const SizedBox(width: 16),
+                IconButton(
+                  iconSize: 34,
+                  color: Colors.white70,
+                  icon: const Icon(Icons.forward_10_rounded),
+                  onPressed: () {
+                    final target = _position + const Duration(seconds: 10);
+                    _player.seek(target > _duration ? _duration : target);
+                  },
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
@@ -169,8 +355,8 @@ class _HomeScreenState extends State<HomeScreen> {
   final TextEditingController _searchController = TextEditingController();
   bool _isSearching = false;
 
-  List<DriveItem> _books = [];
-  List<DriveItem> _articles = [];
+  List<DriveItem> _texts = [];
+  List<DriveItem> _lectures = [];
   bool _isLoading = true;
   String? _errorMessage;
 
@@ -187,25 +373,24 @@ class _HomeScreenState extends State<HomeScreen> {
     });
 
     try {
-      // استفاده از متد استاندارد Uri برای ساخت آدرس با پارامتر
-      final booksUri = Uri.parse(scriptApiUrl).replace(queryParameters: {'folderId': ketabFolderId});
-      final articlesUri = Uri.parse(scriptApiUrl).replace(queryParameters: {'folderId': maghalehFolderId});
+      final textsUri = Uri.parse(scriptApiUrl).replace(queryParameters: {'folderId': ketabFolderId});
+      final lecturesUri = Uri.parse(scriptApiUrl).replace(queryParameters: {'folderId': maghalehFolderId});
 
-      final booksRes = await http.get(booksUri);
-      final articlesRes = await http.get(articlesUri);
+      final textsRes = await http.get(textsUri);
+      final lecturesRes = await http.get(lecturesUri);
 
-      if (booksRes.statusCode == 200 && articlesRes.statusCode == 200) {
-        final List<dynamic> booksJson = json.decode(booksRes.body);
-        final List<dynamic> articlesJson = json.decode(articlesRes.body);
+      if (textsRes.statusCode == 200 && lecturesRes.statusCode == 200) {
+        final List<dynamic> textsJson = json.decode(textsRes.body);
+        final List<dynamic> lecturesJson = json.decode(lecturesRes.body);
 
         setState(() {
-          _books = booksJson.map((e) => DriveItem.fromJson(e)).toList();
-          _articles = articlesJson.map((e) => DriveItem.fromJson(e)).toList();
+          _texts = textsJson.map((e) => DriveItem.fromJson(e)).toList();
+          _lectures = lecturesJson.map((e) => DriveItem.fromJson(e)).toList();
           _isLoading = false;
         });
       } else {
         setState(() {
-          _errorMessage = 'خطا در ارتباط با سرور ابری (کد: ${booksRes.statusCode})';
+          _errorMessage = 'خطا در ارتباط با سرور ابری (کد: ${textsRes.statusCode})';
           _isLoading = false;
         });
       }
@@ -217,18 +402,21 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  Future<void> _downloadAndOpen(DriveItem doc) async {
+  Future<void> _downloadAndOpen(DriveItem doc, {required bool isAudio}) async {
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (ctx) => const AlertDialog(
-        backgroundColor: Color(0xFF133B4F),
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF2B2B3D),
         content: Row(
           children: [
-            CircularProgressIndicator(color: Color(0xFF1ABC9C)),
-            SizedBox(width: 20),
+            const CircularProgressIndicator(color: Color(0xFFFF6B4A)),
+            const SizedBox(width: 20),
             Expanded(
-              child: Text('در حال دریافت کتاب...', style: TextStyle(color: Colors.white, fontSize: 13)),
+              child: Text(
+                isAudio ? 'در حال دریافت فایل سخنرانی...' : 'در حال دریافت متن...',
+                style: const TextStyle(color: Colors.white, fontSize: 13),
+              ),
             ),
           ],
         ),
@@ -243,14 +431,22 @@ class _HomeScreenState extends State<HomeScreen> {
 
       if (response.statusCode == 200) {
         final dir = await getTemporaryDirectory();
-        final file = File('${dir.path}/${doc.id}.pdf');
+        final ext = isAudio ? 'mp3' : 'pdf';
+        final file = File('${dir.path}/${doc.id}.$ext');
         await file.writeAsBytes(response.bodyBytes, flush: true);
 
         if (!mounted) return;
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (_) => PdfViewerScreen(file: file, title: doc.name)),
-        );
+        if (isAudio) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => AudioPlayerScreen(file: file, title: doc.name)),
+          );
+        } else {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => PdfViewerScreen(file: file, title: doc.name)),
+          );
+        }
       } else {
         await _launchExternal(downloadUrl);
       }
@@ -266,11 +462,12 @@ class _HomeScreenState extends State<HomeScreen> {
       await launchUrl(uri, mode: LaunchMode.externalApplication);
     }
   }
+
   void _showAboutUsDialog() {
     showDialog(
       context: context,
       builder: (ctx) => Dialog(
-        backgroundColor: const Color(0xFF0F3244),
+        backgroundColor: const Color(0xFF262638),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         child: Container(
           padding: const EdgeInsets.all(20),
@@ -279,7 +476,7 @@ class _HomeScreenState extends State<HomeScreen> {
             children: [
               const Row(
                 children: [
-                  Icon(Icons.info_outline, color: Color(0xFF1ABC9C)),
+                  Icon(Icons.info_outline, color: Color(0xFFFF6B4A)),
                   SizedBox(width: 8),
                   Text(
                     'درباره ما',
@@ -291,11 +488,10 @@ class _HomeScreenState extends State<HomeScreen> {
               const Expanded(
                 child: SingleChildScrollView(
                   child: Text(
-                    'محفلِ اُنس؛ تلاقیِ آگاهی و آرامش\n\n'
-                    'در هیاهوی جهانِ مدرن، «محفلِ اُنس» دعوتی است به بازگشت؛ بازگشتی آگاهانه به سرچشمه‌های وحیانی و اصیل. ما در این مجموعه برآنیم تا با نگاهی برآمده از پژوهش‌های دقیقِ متن‌شناختی و هرمنوتیکی، پلی میانِ میراثِ غنیِ دینی و نیازهای مخاطبِ امروز برقرار کنیم.\n\n'
-                    'دغدغه‌ی ما در «محفلِ اُنس»، فراتر از انتقالِ صرفِ داده‌هاست. ما با رویکردی متمرکز بر «رحمانیت»، تلاش کرده‌ایم بستری را فراهم آوریم که در آن، مفاهیم عمیقِ عاشورایی و کلامِ وحی، نه به عنوانِ متونی دور، بلکه به مثابه راهکارهایی زنده و کاربردی برای تعالیِ فردی و اجتماعی درک شوند.\n\n'
-                    'این اپلیکیشن، حاصلِ تلاشی مستمر برای ساختارمند کردنِ فرآیندِ «اُنس» با کلام است؛ جایی که دقتِ علمی با لطافتِ معنوی گره می‌خورد تا تجربه‌ای متفاوت از تعامل با متونِ قدسی را برای شما رقم بزند. امیدواریم «محفلِ اُنس»، چراغِ راهی در مسیرِ جستجویِ معنا و آرامشِ پایدار باشد.\n\n'
-                    'با احترام،\nتیمِ توسعه و پژوهشِ محفلِ اُنس',
+                    'شب‌های دانشجویی؛ تلاقیِ اندیشه، معرفت و پویایی\n\n'
+                    'در دنیای پرشتاب امروز، «شب‌های دانشجویی» بستری است برای بازخوانیِ اندیشمندانه و دقیقِ آموزه‌ها و معارف در پیوند با اقتضائات زیست دانشجویی و جامعه امروز.\n\n'
+                    'این برنامه بر آن است تا با تکیه بر متون غنی‌سازی شده، سخنرانی‌های صوتی و خودارزیابی‌های علمی، محیطی انگیزه‌بخش و آگاهی‌افزا را برای همه پویندگان دانش رقم بزند.\n\n'
+                    'با احترام،\nتیمِ توسعه و پژوهشِ شب‌های دانشجویی',
                     style: TextStyle(color: Colors.white70, fontSize: 13.5, height: 1.8),
                     textAlign: TextAlign.justify,
                   ),
@@ -306,7 +502,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 width: double.infinity,
                 child: ElevatedButton(
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF1ABC9C),
+                    backgroundColor: const Color(0xFFFF6B4A),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                   ),
                   onPressed: () => Navigator.of(ctx).pop(),
@@ -326,7 +522,7 @@ class _HomeScreenState extends State<HomeScreen> {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF0F3244),
+        backgroundColor: const Color(0xFF262638),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: const Text(
           'ارسال نظر و انتقاد',
@@ -337,10 +533,10 @@ class _HomeScreenState extends State<HomeScreen> {
           maxLines: 5,
           style: const TextStyle(color: Colors.white),
           decoration: const InputDecoration(
-            hintText: 'متن نظر خود را بنویسید...',
+            hintText: 'متن نظر یا پیشنهاد خود را بنویسید...',
             hintStyle: TextStyle(color: Colors.white38),
             enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: Colors.white24)),
-            focusedBorder: OutlineInputBorder(borderSide: BorderSide(color: Color(0xFF1ABC9C))),
+            focusedBorder: OutlineInputBorder(borderSide: BorderSide(color: Color(0xFFFF6B4A))),
           ),
         ),
         actions: [
@@ -349,14 +545,14 @@ class _HomeScreenState extends State<HomeScreen> {
             child: const Text('انصراف', style: TextStyle(color: Colors.white54)),
           ),
           ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF1ABC9C)),
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFFF6B4A)),
             onPressed: () async {
               final String text = feedbackController.text.trim();
               if (text.isNotEmpty) {
                 final Uri emailLaunchUri = Uri(
                   scheme: 'mailto',
                   path: 'm_khozani@yahoo.com',
-                  query: 'subject=${Uri.encodeComponent('نظر کاربر اپلیکیشن محفل اُنس')}&body=${Uri.encodeComponent(text)}',
+                  query: 'subject=${Uri.encodeComponent('نظر کاربر اپلیکیشن شب‌های دانشجویی')}&body=${Uri.encodeComponent(text)}',
                 );
                 Navigator.pop(ctx);
                 await launchUrl(emailLaunchUri);
@@ -372,7 +568,7 @@ class _HomeScreenState extends State<HomeScreen> {
   void _showContactUsModal() {
     showModalBottomSheet(
       context: context,
-      backgroundColor: const Color(0xFF133B4F),
+      backgroundColor: const Color(0xFF2B2B3D),
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -387,7 +583,7 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             const SizedBox(height: 20),
             ListTile(
-              leading: const Icon(Icons.language, color: Color(0xFF1ABC9C), size: 28),
+              leading: const Icon(Icons.language, color: Color(0xFFFF6B4A), size: 28),
               title: const Text('پایگاه اینترنتی رسمی', style: TextStyle(color: Colors.white)),
               subtitle: const Text('www.shiravi.org', style: TextStyle(color: Colors.white70)),
               onTap: () {
@@ -397,7 +593,7 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             const Divider(color: Colors.white12),
             ListTile(
-              leading: const Icon(Icons.send_rounded, color: Color(0xFF1ABC9C), size: 28),
+              leading: const Icon(Icons.send_rounded, color: Color(0xFFFF6B4A), size: 28),
               title: const Text('کانال رسمی در پیام‌رسان ایتا', style: TextStyle(color: Colors.white)),
               subtitle: const Text('@shiravi_ir', style: TextStyle(color: Colors.white70)),
               onTap: () {
@@ -407,22 +603,12 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             const Divider(color: Colors.white12),
             ListTile(
-              leading: const Icon(Icons.psychology_alt_rounded, color: Color(0xFF1ABC9C), size: 28),
+              leading: const Icon(Icons.psychology_alt_rounded, color: Color(0xFFFF6B4A), size: 28),
               title: const Text('پاسخ به پرسش‌های سخت', style: TextStyle(color: Colors.white)),
               subtitle: const Text('گروه پرسش و پاسخ در پیام‌رسان بله', style: TextStyle(color: Colors.white70)),
               onTap: () {
                 Navigator.pop(ctx);
                 _launchExternal('https://ble.ir/join/NGMyZGI5OT');
-              },
-            ),
-            const Divider(color: Colors.white12),
-            ListTile(
-              leading: const Icon(Icons.email_rounded, color: Color(0xFF1ABC9C), size: 28),
-              title: const Text('ارسال نظر و انتقاد', style: TextStyle(color: Colors.white)),
-              subtitle: const Text('پیام شما مستقیماً به استاد می‌رسد', style: TextStyle(color: Colors.white70)),
-              onTap: () {
-                Navigator.pop(ctx);
-                _showFeedbackDialog();
               },
             ),
           ],
@@ -432,14 +618,16 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   String _getAppBarTitle() {
-    if (_selectedIndex == 0) return 'کتب در محفل انس';
-    if (_selectedIndex == 1) return 'مقالات در محفل انس';
+    if (_selectedIndex == 0) return 'متون در شب‌های دانشجویی';
+    if (_selectedIndex == 1) return 'سخنرانی‌های صوتی';
     return 'تست خودارزیابی MBTI';
   }
 
   @override
   Widget build(BuildContext context) {
-    final currentList = _selectedIndex == 0 ? _books : _articles;
+    final currentList = _selectedIndex == 0 ? _texts : _lectures;
+    final isAudioTab = _selectedIndex == 1;
+
     final filteredList = currentList.where((doc) {
       return doc.name.toLowerCase().contains(_searchQuery.toLowerCase());
     }).toList();
@@ -485,17 +673,18 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           PopupMenuButton<String>(
             icon: const Icon(Icons.more_vert, color: Colors.white),
-            color: const Color(0xFF133B4F),
+            color: const Color(0xFF262638),
             onSelected: (val) {
               if (val == 'about') _showAboutUsDialog();
               if (val == 'contact') _showContactUsModal();
+              if (val == 'feedback') _showFeedbackDialog();
             },
             itemBuilder: (ctx) => const [
               PopupMenuItem(
                 value: 'about',
                 child: Row(
                   children: [
-                    Icon(Icons.info_outline, color: Color(0xFF1ABC9C), size: 20),
+                    Icon(Icons.info_outline, color: Color(0xFFFF6B4A), size: 20),
                     SizedBox(width: 10),
                     Text('درباره ما', style: TextStyle(color: Colors.white)),
                   ],
@@ -505,9 +694,19 @@ class _HomeScreenState extends State<HomeScreen> {
                 value: 'contact',
                 child: Row(
                   children: [
-                    Icon(Icons.contact_support_outlined, color: Color(0xFF1ABC9C), size: 20),
+                    Icon(Icons.contact_support_outlined, color: Color(0xFFFF6B4A), size: 20),
                     SizedBox(width: 10),
                     Text('ارتباط با ما', style: TextStyle(color: Colors.white)),
+                  ],
+                ),
+              ),
+              PopupMenuItem(
+                value: 'feedback',
+                child: Row(
+                  children: [
+                    Icon(Icons.rate_review_outlined, color: Color(0xFFFF6B4A), size: 20),
+                    SizedBox(width: 10),
+                    Text('ارسال نظر و انتقاد', style: TextStyle(color: Colors.white)),
                   ],
                 ),
               ),
@@ -522,9 +721,9 @@ class _HomeScreenState extends State<HomeScreen> {
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      CircularProgressIndicator(color: Color(0xFF1ABC9C)),
+                      CircularProgressIndicator(color: Color(0xFFFF6B4A)),
                       SizedBox(height: 16),
-                      Text('در حال بارگذاری لیست از فضای ابری...',
+                      Text('در حال دریافت اطلاعات از فضای ابری...',
                           style: TextStyle(color: Colors.white70, fontSize: 14)),
                     ],
                   ),
@@ -539,7 +738,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           Text(_errorMessage!, style: const TextStyle(color: Colors.white70)),
                           const SizedBox(height: 12),
                           ElevatedButton.icon(
-                            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF1ABC9C)),
+                            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFFF6B4A)),
                             onPressed: _fetchDriveFiles,
                             icon: const Icon(Icons.refresh, color: Colors.white),
                             label: const Text('تلاش مجدد', style: TextStyle(color: Colors.white)),
@@ -548,8 +747,8 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                     )
                   : RefreshIndicator(
-                      color: const Color(0xFF1ABC9C),
-                      backgroundColor: const Color(0xFF133B4F),
+                      color: const Color(0xFFFF6B4A),
+                      backgroundColor: const Color(0xFF262638),
                       onRefresh: _fetchDriveFiles,
                       child: filteredList.isEmpty
                           ? const Center(
@@ -562,7 +761,7 @@ class _HomeScreenState extends State<HomeScreen> {
                               itemBuilder: (context, index) {
                                 final doc = filteredList[index];
                                 return Card(
-                                  color: const Color(0xFF133B4F),
+                                  color: const Color(0xFF262638),
                                   margin: const EdgeInsets.only(bottom: 10),
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(12),
@@ -572,12 +771,12 @@ class _HomeScreenState extends State<HomeScreen> {
                                     leading: Container(
                                       padding: const EdgeInsets.all(8),
                                       decoration: BoxDecoration(
-                                        color: const Color(0xFF1ABC9C).withOpacity(0.15),
+                                        color: const Color(0xFFFF6B4A).withOpacity(0.15),
                                         borderRadius: BorderRadius.circular(8),
                                       ),
                                       child: Icon(
-                                        _selectedIndex == 0 ? Icons.menu_book_rounded : Icons.article_rounded,
-                                        color: const Color(0xFF1ABC9C),
+                                        isAudioTab ? Icons.audiotrack_rounded : Icons.description_rounded,
+                                        color: const Color(0xFFFF6B4A),
                                         size: 26,
                                       ),
                                     ),
@@ -590,12 +789,12 @@ class _HomeScreenState extends State<HomeScreen> {
                                         height: 1.4,
                                       ),
                                     ),
-                                    trailing: const Icon(
-                                      Icons.chrome_reader_mode_outlined,
-                                      color: Color(0xFF1ABC9C),
-                                      size: 24,
+                                    trailing: Icon(
+                                      isAudioTab ? Icons.play_circle_fill_rounded : Icons.chrome_reader_mode_outlined,
+                                      color: const Color(0xFFFFB300),
+                                      size: 28,
                                     ),
-                                    onTap: () => _downloadAndOpen(doc),
+                                    onTap: () => _downloadAndOpen(doc, isAudio: isAudioTab),
                                   ),
                                 );
                               },
@@ -615,18 +814,18 @@ class _HomeScreenState extends State<HomeScreen> {
               _searchController.clear();
             });
           },
-          backgroundColor: const Color(0xFF0B2B3A),
-          selectedItemColor: const Color(0xFF1ABC9C),
+          backgroundColor: const Color(0xFF181825),
+          selectedItemColor: const Color(0xFFFF6B4A),
           unselectedItemColor: Colors.white54,
           selectedLabelStyle: const TextStyle(fontWeight: FontWeight.bold),
           items: const [
             BottomNavigationBarItem(
-              icon: Icon(Icons.menu_book_rounded),
-              label: 'کتاب‌ها',
+              icon: Icon(Icons.description_rounded),
+              label: 'متون',
             ),
             BottomNavigationBarItem(
-              icon: Icon(Icons.article_rounded),
-              label: 'مقالات',
+              icon: Icon(Icons.headphones_rounded),
+              label: 'سخنرانی',
             ),
             BottomNavigationBarItem(
               icon: Icon(Icons.psychology_rounded),
@@ -837,13 +1036,13 @@ class _MbtiQuizScreenState extends State<MbtiQuizScreen> {
             Container(
               padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
-                color: const Color(0xFF133B4F),
+                color: const Color(0xFF262638),
                 borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: const Color(0xFF1ABC9C), width: 1.5),
+                border: Border.all(color: const Color(0xFFFF6B4A), width: 1.5),
               ),
               child: Column(
                 children: [
-                  const Icon(Icons.stars_rounded, color: Color(0xFF1ABC9C), size: 60),
+                  const Icon(Icons.stars_rounded, color: Color(0xFFFFB300), size: 60),
                   const SizedBox(height: 12),
                   const Text('نتیجه ارزیابی شخصیت شما',
                       style: TextStyle(color: Colors.white70, fontSize: 14)),
@@ -851,7 +1050,7 @@ class _MbtiQuizScreenState extends State<MbtiQuizScreen> {
                   Text(
                     _calculatedType,
                     style: const TextStyle(
-                        color: Color(0xFF1ABC9C),
+                        color: Color(0xFFFF6B4A),
                         fontSize: 34,
                         fontWeight: FontWeight.bold,
                         letterSpacing: 2),
@@ -879,7 +1078,7 @@ class _MbtiQuizScreenState extends State<MbtiQuizScreen> {
               height: 48,
               child: ElevatedButton.icon(
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF1ABC9C),
+                  backgroundColor: const Color(0xFFFF6B4A),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                 ),
                 onPressed: _resetQuiz,
@@ -900,7 +1099,7 @@ class _MbtiQuizScreenState extends State<MbtiQuizScreen> {
       children: [
         Container(
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-          color: const Color(0xFF0F3244),
+          color: const Color(0xFF1E1E2E),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -908,12 +1107,12 @@ class _MbtiQuizScreenState extends State<MbtiQuizScreen> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   const Text(
-                    'آزمون خودارزیابی MBTI (نسخه فارسی)',
+                    'آزمون خودارزیابی MBTI (نسخه دانشجویی)',
                     style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
                   ),
                   Text(
                     '$answeredCount از ۳۲ پاسخ داده شده',
-                    style: const TextStyle(color: Color(0xFF1ABC9C), fontSize: 12.5),
+                    style: const TextStyle(color: Color(0xFFFFB300), fontSize: 12.5),
                   ),
                 ],
               ),
@@ -924,7 +1123,7 @@ class _MbtiQuizScreenState extends State<MbtiQuizScreen> {
                   value: progress,
                   minHeight: 7,
                   backgroundColor: Colors.white12,
-                  color: const Color(0xFF1ABC9C),
+                  color: const Color(0xFFFF6B4A),
                 ),
               ),
             ],
@@ -939,12 +1138,12 @@ class _MbtiQuizScreenState extends State<MbtiQuizScreen> {
               final currentAns = _answers[index];
 
               return Card(
-                color: const Color(0xFF133B4F),
+                color: const Color(0xFF262638),
                 margin: const EdgeInsets.only(bottom: 12),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                   side: BorderSide(
-                    color: currentAns != null ? const Color(0xFF1ABC9C).withOpacity(0.5) : Colors.transparent,
+                    color: currentAns != null ? const Color(0xFFFF6B4A).withOpacity(0.5) : Colors.transparent,
                     width: 1,
                   ),
                 ),
@@ -968,17 +1167,17 @@ class _MbtiQuizScreenState extends State<MbtiQuizScreen> {
                         child: Container(
                           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
                           decoration: BoxDecoration(
-                            color: currentAns == q.typeA ? const Color(0xFF1ABC9C).withOpacity(0.2) : Colors.black12,
+                            color: currentAns == q.typeA ? const Color(0xFFFF6B4A).withOpacity(0.2) : Colors.black12,
                             borderRadius: BorderRadius.circular(8),
                             border: Border.all(
-                              color: currentAns == q.typeA ? const Color(0xFF1ABC9C) : Colors.white10,
+                              color: currentAns == q.typeA ? const Color(0xFFFF6B4A) : Colors.white10,
                             ),
                           ),
                           child: Row(
                             children: [
                               Icon(
                                 currentAns == q.typeA ? Icons.radio_button_checked : Icons.radio_button_off,
-                                color: currentAns == q.typeA ? const Color(0xFF1ABC9C) : Colors.white38,
+                                color: currentAns == q.typeA ? const Color(0xFFFF6B4A) : Colors.white38,
                                 size: 18,
                               ),
                               const SizedBox(width: 8),
@@ -1006,17 +1205,17 @@ class _MbtiQuizScreenState extends State<MbtiQuizScreen> {
                         child: Container(
                           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
                           decoration: BoxDecoration(
-                            color: currentAns == q.typeB ? const Color(0xFF1ABC9C).withOpacity(0.2) : Colors.black12,
+                            color: currentAns == q.typeB ? const Color(0xFFFF6B4A).withOpacity(0.2) : Colors.black12,
                             borderRadius: BorderRadius.circular(8),
                             border: Border.all(
-                              color: currentAns == q.typeB ? const Color(0xFF1ABC9C) : Colors.white10,
+                              color: currentAns == q.typeB ? const Color(0xFFFF6B4A) : Colors.white10,
                             ),
                           ),
                           child: Row(
                             children: [
                               Icon(
                                 currentAns == q.typeB ? Icons.radio_button_checked : Icons.radio_button_off,
-                                color: currentAns == q.typeB ? const Color(0xFF1ABC9C) : Colors.white38,
+                                color: currentAns == q.typeB ? const Color(0xFFFF6B4A) : Colors.white38,
                                 size: 18,
                               ),
                               const SizedBox(width: 8),
@@ -1042,13 +1241,13 @@ class _MbtiQuizScreenState extends State<MbtiQuizScreen> {
         ),
         Container(
           padding: const EdgeInsets.all(12),
-          color: const Color(0xFF0F3244),
+          color: const Color(0xFF1E1E2E),
           child: SizedBox(
             width: double.infinity,
             height: 46,
             child: ElevatedButton(
               style: ElevatedButton.styleFrom(
-                backgroundColor: answeredCount == 32 ? const Color(0xFF1ABC9C) : Colors.grey.shade700,
+                backgroundColor: answeredCount == 32 ? const Color(0xFFFF6B4A) : Colors.grey.shade800,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
               ),
               onPressed: answeredCount == 32 ? _calculateResult : null,
