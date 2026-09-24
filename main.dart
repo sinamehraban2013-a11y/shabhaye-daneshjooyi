@@ -14,8 +14,8 @@ import 'package:audioplayers/audioplayers.dart';
 // ==========================================
 const String scriptApiUrl =
     'https://script.google.com/macros/s/AKfycbwBLyDbJu78M_nxaZtfcfFtd6DSMp6yl3Lu2lPOPwimuDynqGN8cTvZr4JpN3eJhxGA/exec';
-const String ketabFolderId = '1R2iM-PbRDY9gp7LPBGcKFBO9B5rsPt71';
-const String maghalehFolderId = '1SJ1dS0XAnXwr4WGQPwlcpUJCFDy_T2Ir';
+const String ketabFolderId = '1R7LxofkSaSz5EGsgSv1TSbBAbJR_wE82';
+const String maghalehFolderId = '16aRam3dFDXiFl0bgQN-3a5iZP6Q4HPE9';
 // ==========================================
 
 void main() {
