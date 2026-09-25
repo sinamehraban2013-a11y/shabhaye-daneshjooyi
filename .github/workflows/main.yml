@@ -1,4 +1,4 @@
-name: Build Mahfel Ons APK
+name: Build shabha daneshjooyi APK
 
 on:
   push:
@@ -30,7 +30,7 @@ jobs:
         run: |
           flutter create app_build \
             --org ir.shiravi \
-            --project-name mahfel_ons \
+            --project-name shabha_daneshjooyi \
             --platforms=android
 
       - name: Copy application files
@@ -39,8 +39,8 @@ jobs:
 
           if [ -f "pubspec.yaml" ]; then
             cp "pubspec.yaml" "app_build/pubspec.yaml"
-          elif [ -f "mahfel_ons/pubspec.yaml" ]; then
-            cp "mahfel_ons/pubspec.yaml" "app_build/pubspec.yaml"
+          elif [ -f "shabha_daneshjooyi/pubspec.yaml" ]; then
+            cp "shabha_daneshjooyi/pubspec.yaml" "app_build/pubspec.yaml"
           else
             echo "pubspec.yaml not found"
             exit 1
@@ -48,8 +48,8 @@ jobs:
 
           if [ -f "main.dart" ]; then
             cp "main.dart" "app_build/lib/main.dart"
-          elif [ -f "mahfel_ons/lib/main.dart" ]; then
-            cp "mahfel_ons/lib/main.dart" "app_build/lib/main.dart"
+          elif [ -f "shabha_daneshjooyi/lib/main.dart" ]; then
+            cp "shabha_daneshjooyi/lib/main.dart" "app_build/lib/main.dart"
           else
             echo "main.dart not found"
             exit 1
@@ -61,8 +61,8 @@ jobs:
             cp "logo.png" "app_build/assets/logo.png"
           elif [ -f "assets/logo.png" ]; then
             cp "assets/logo.png" "app_build/assets/logo.png"
-          elif [ -f "mahfel_ons/assets/logo.png" ]; then
-            cp "mahfel_ons/assets/logo.png" "app_build/assets/logo.png"
+          elif [ -f "shabha_daneshjooyi/assets/logo.png" ]; then
+            cp "shabha_daneshjooyi/assets/logo.png" "app_build/assets/logo.png"
           else
             echo "logo.png not found"
             exit 1
