@@ -109,5 +109,5 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name:shabhaye-daneshjooyi-app
-          path: app_build/build/app/outputs/flutter-apk/shabhaye-daneshjooyi.apk
+          name: Mahfel-Ons-App
+          path: app_build/build/app/outputs/flutter-apk/app-release.apk
