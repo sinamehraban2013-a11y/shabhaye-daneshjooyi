@@ -12,7 +12,7 @@
     </queries>
 
     <application
-        android:label="محفل انس"
+        android:label="شبهای دانشجویی"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
         android:usesCleartextTraffic="true">
