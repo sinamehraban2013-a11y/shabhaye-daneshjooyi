@@ -1,6 +1,7 @@
 name: shabhaye_daneshjooyi
-description: "اپلیکیشن شب‌های دانشجویی"
+description: "شب‌های دانشجویی - سامانه محتوایی و سخنرانی‌های دکتر شیروی"
 publish_to: 'none'
+
 version: 1.0.0+1
 
 environment:
@@ -11,11 +12,18 @@ dependencies:
     sdk: flutter
   flutter_localizations:
     sdk: flutter
+
+  # پکیج‌های قبلی شما
   http: ^1.2.0
   path_provider: ^2.1.2
-  syncfusion_flutter_pdfviewer: any
+  syncfusion_flutter_pdfviewer: ^26.1.41
   url_launcher: ^6.2.4
   audioplayers: ^6.0.0
+
+  # پکیج‌های جدید مورد نیاز برای ۱۰ قابلیت
+  shared_preferences: ^2.2.3
+  device_info_plus: ^10.1.0
+  open_file: ^3.3.2
 
 dev_dependencies:
   flutter_test:
@@ -24,7 +32,3 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
-  assets:
-    # اگر این فایل‌ها در مخزن وجود دارند، علامت # را از خط مربوطه بردارید.
-    # - assets/mahfel_ons_animation.gif
-    # - assets/logo.png
