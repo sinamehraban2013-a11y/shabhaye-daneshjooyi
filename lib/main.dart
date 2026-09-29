@@ -327,7 +327,8 @@ class _QuoteMarqueeState extends State<QuoteMarquee> {
   @override
   void initState() {
     super.initState();
-    _allText = deepThoughtsQuotes.join('  ✦  ') + '  ✦  ';
+    // ۱۵ کاراکتر فاصله بین هر جمله
+    _allText = deepThoughtsQuotes.join('               ') + '               ';
     WidgetsBinding.instance.addPostFrameCallback((_) => _startScrolling());
   }
 
@@ -361,63 +362,21 @@ class _QuoteMarqueeState extends State<QuoteMarquee> {
       height: 38,
       decoration: const BoxDecoration(
         color: Color(0xFF27293D),
-        border: Border(bottom: BorderSide(color: Color(0x33FF6B4A), width: QuoteMarquee> createState() => _QuoteMarqueeState();
-}
-
-class _QuoteMarqueeState extends State<QuoteMarquee> {
-  final ScrollController _scrollController = ScrollController();
-  Timer? _timer;
-  late final String _allText;
-
-  @override
-  void initState() {
-    super.initState();
-    _allText = deepThoughtsQuotes.join('  ✦  ') + '  ✦  ';
-    WidgetsBinding.instance.addPostFrameCallback((_) => _startScrolling());
-  }
-
-  void _startScrolling() {
-    _timer = Timer.periodic(const Duration(milliseconds: 40), (timer) {
-      if (!_scrollController.hasClients) return;
-      double maxScroll = _scrollController.position.maxScrollExtent;
-      double current = _scrollController.offset;
-      if (current >= maxScroll) {
-        _scrollController.jumpTo(0);
-      } else {
-        _scrollController.animateTo(
-          current + 1.5,
-          duration: const Duration(milliseconds: 40),
-          curve: Curves.linear,
-        );
-      }
-    });
-  }
-
-  @override
-  void dispose() {
-    _timer?.cancel();
-    _scrollController.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: 38,
-      decoration: const BoxDecoration(
-        color: Color(0xFF27293D),
-        border: Border(bottom: BorderSide(color: Color(0x33FF6B4A), width: 1)),
+        border: Border(bottom: BorderSide(color: Color(0x33FF6B4A), width: 1.0)),
       ),
       child: Row(
         children: [
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8),
-            color: const Color(0xFFFF6B4A).withOpacity(0.2),
+            padding: const EdgeInsets.symmetric(horizontal: 10),
+            color: const Color(0xFF1F1D2B),
             child: const Row(
               children: [
-                Icon(Icons.auto_stories, size: 16, color: Color(0xFFFF6B4A)),
+                Icon(Icons.format_quote, size: 16, color: Color(0xFFFF6B4A)),
                 SizedBox(width: 4),
-                Text('هزاران فکر عمیق:', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFFFF6B4A))),
+                Text(
+                  'هزاران فکر عمیق:',
+                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFFFF6B4A)),
+                ),
               ],
             ),
           ),
@@ -425,11 +384,22 @@ class _QuoteMarqueeState extends State<QuoteMarquee> {
             child: ListView(
               controller: _scrollController,
               scrollDirection: Axis.horizontal,
-              physics: const NeverScroll    setState(() {
-      _readItemIds.add(id);
-    });
-    await prefs.setStringList('read_items_ids', _readItemIds.toList());
+              physics: const NeverScrollableScrollPhysics(),
+              children: [
+                Center(
+                  child: Text(
+                    _allText,
+                    style: const TextStyle(fontSize: 12, color: Colors.white70),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
   }
+}
 
   Future<void> _fetchAllData() async {
     setState(() {
@@ -457,18 +427,20 @@ class _QuoteMarqueeState extends State<QuoteMarquee> {
       });
     }
   }
-
   Future<List<DriveItem>> _fetchFolder(String folderId) async {
     final url = '$scriptApiUrl?folderId=$folderId';
-    final response = await http.get(Uri.parse(url)).timeout(const Duration(seconds: 15));
-    if (response.statusCode == 200) {
-      final List<dynamic> data = jsonDecode(response.body);
-      return data.map((json) => DriveItem.fromJson(json)).toList();
+    try {
+      final response = await http.get(Uri.parse(url)).timeout(const Duration(seconds: 15));
+      if (response.statusCode == 200) {
+        final List<dynamic> data = jsonDecode(response.body);
+        return data.map((json) => DriveItem.fromJson(json)).toList();
+      }
+    } catch (e) {
+      debugPrint('Error fetching folder: $e');
     }
     return [];
   }
 
-  // دانلود و باز کردن فایل
   Future<void> _downloadAndOpen(DriveItem item, {bool isApk = false}) async {
     showDialog(
       context: context,
@@ -492,71 +464,45 @@ class _QuoteMarqueeState extends State<QuoteMarquee> {
     );
 
     try {
-      final downloadUrl = 'https://drive.google.com/uc?export=download&id=${item.id}';
-      final response = await http.get(Uri.parse(downloadUrl)).timeout(const Duration(seconds: 45));
+      final response = await http.get(Uri.parse(item.downloadUrl));
+      Navigator.pop(context); // بستن لودینگ
 
       if (response.statusCode == 200) {
-        final tempDir = await getTemporaryDirectory();
-        
-        // ثبت به عنوان خوانده شده
-        await _markAsRead(item.id);
+        final dir = await getApplicationDocumentsDirectory();
+        String safeName = item.name.replaceAll('.bin', '');
+        final file = File('${dir.path}/$safeName');
+        await file.writeAsBytes(response.bytes);
 
-        if (!mounted) return;ترنت. لطفاً مجدداً بررسی نمایید.';
-        _isLoading = false;
-      });
-    }
-  }
-
-  Future<List<DriveItem>> _fetchFolder(String folderId) async {
-    final url = '$scriptApiUrl?folderId=$folderId';
-    final response = await http.get(Uri.parse(url)).timeout(const Duration(seconds: 15));
-    if (response.statusCode == 200) {
-      final List<dynamic> data = jsonDecode(response.body);
-      return data.map((json) => DriveItem.fromJson(json)).toList();
-    }
-    return [];
-  }
-
-  // دانلود و باز کردن فایل
-  Future<void> _downloadAndOpen(DriveItem item, {bool isApk = false}) async {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => const Center(
-        child: Card(
-          color: Color(0xFF27293D),
-          child: Padding(
-            padding: EdgeInsets.all(24.0),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                CircularProgressIndicator(color: Color(0xFFFF6B4A)),
-                SizedBox(height: 16),
-                Text('در حال دریافت و آماده‌سازی فایل...', style: TextStyle(color: Colors.white)),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-
-    try {
-      final downloadUrl = 'https://drive.google.com/uc?export=download&id=${item.id}';
-      final response = await http.get(Uri.parse(downloadUrl)).timeout(const Duration(seconds: 45));
-
-      if (response.statusCode == 200) {
-        final tempDir = await getTemporaryDirectory();
-        
-        // ثبت به عنوان خوانده شده
         await _markAsRead(item.id);
 
         if (!mounted) return;
-        Navigator.pop(context); // بستن لودینگ
 
-        if (isApk) {
-          // مدیریت فایل‌های با پسوند .bin یا تغییر نام به .apk
-          String cleanName = item.name.endsWith('.bin') ? item.name.showSnackBar(String text) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(text)));
+        if (isApk || safeName.toLowerCase().endsWith('.apk')) {
+          await OpenFile.open(file.path);
+        } else if (safeName.toLowerCase().endsWith('.pdf')) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => PdfViewerScreen(filePath: file.path, title: item.name),
+            ),
+          );
+        } else {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => AudioPlayerScreen(filePath: file.path, title: item.name),
+            ),
+          );
+        }
+      } else {
+        _showSnackBar('خطا در بارگیری فایل از درگاه درایو');
+      }
+    } catch (e) {
+      if (mounted) {
+        Navigator.pop(context);
+        _showSnackBar('خطا در اتصال به اینترنت یا بارگذاری فایل');
+      }
+    }
   }
 
   // مورد ۱: قابلیت «روزیِ من» (انتخاب تصادفی یک صوت یا متن)
@@ -686,43 +632,104 @@ class _QuoteMarqueeState extends State<QuoteMarquee> {
     );
   }
 
-  // مورد ۴: نشان اعلان (شیپور)
-  void _showNotificationNotice() {
+  // مورد ۴: شیپور (دریافت پیام و اطلاعیه جدید از گوگل درایو)
+  Future<void> _showNotificationNotice() async {
     showDialog(
-        ),
-        content: const SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => const Center(
+        child: CircularProgressIndicator(color: Color(0xFFFF6B4A)),
+      ),
+    );
+
+    // دریافت اطلاعیه پویا از سرور یا فایل گوگل درایو
+    String? announcement = await _fetchAnnouncementText();
+    if (!mounted) return;
+    Navigator.pop(context); // بستن لودینگ
+
+    showDialog(
+      context: context,
+      builder: (ctx) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          backgroundColor: const Color(0xFF27293D),
+          title: const Row(
             children: [
-              Text('• زبانه متون و سخنرانی:', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFFFF6B4A))),
-              Text('می‌توانید کتب و صوت‌های سخنرانی‌ها را با کلیک دریافت کنید. فایل‌های مطالعه‌شده با تیک سبز متمایز می‌شوند.', style: TextStyle(fontSize: 12.5)),
-              SizedBox(height: 10),
-              Text('• دکمه "روزیِ من":', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFFFF6B4A))),
-              Text('در هر ورود یا مطالعه روزانه، یک محتوا به صورت تصادفی به عنوان هدیه روز برای شما به نمایش در می‌آید.', style: TextStyle(fontSize: 12.5)),
-              SizedBox(height: 10),
-              Text('• تست MBTI:', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFFFF6B4A))),
-              Text('با پاسخ به ۳۲ سوال، سنخ شخصیتی خود را شناسایی نمایید.', style: TextStyle(fontSize: 12.5)),
-              SizedBox(height: 10),
-              Text('• بخش محصولات:', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFFFF6B4A))),
-              Text('سایر برنامه‌ها نظیر بازی جورچین و نرم‌افزارهای آموزشی از این بخش قابل بارگیری و نصب است.', style: TextStyle(fontSize: 12.5)),
+              Icon(Icons.campaign, color: Color(0xFFFF6B4A), size: 28),
+              SizedBox(width: 8),
+              Text('اطلاعیه‌ها و پیام‌های جدید', style: TextStyle(color: Colors.white, fontSize: 16)),
             ],
           ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('بستن', style: TextStyle(color: Color(0xFFFF6B4A))),
+          content: SingleChildScrollView(
+            child: Text(
+              announcement ?? 'در حال حاضر پیام یا اطلاعیه جدیدی ثبت نشده است.',
+              style: const TextStyle(color: Colors.white70, fontSize: 13, height: 1.6),
+            ),
           ),
-        ],
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('متوجه شدم', style: TextStyle(color: Color(0xFFFF6B4A))),
+            ),
+          ],
+        ),
       ),
     );
   }
 
-  // مورد ۶: منوی سه نقطه به صورت Bottom Sheet
-لینکها و طراحی منوی سه نقطه : // 
-  void _showContactDialog() {
-    final TextEditingController textController = TextEditingController();
-
+  // مورد ۸: راهنمای ۴ بندی دقیق درخواستی (متصل به علامت سوال)
+  void _showHelpDialog() {
+    showDialog(
+      context: context,
+      builder: (ctx) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          backgroundColor: const Color(0xFF27293D),
+          title: const Row(
+            children: [
+              Icon(Icons.help_outline, color: Color(0xFFFF6B4A), size: 26),
+              SizedBox(width: 8),
+              Text('راهنمای استفاده از برنامه', style: TextStyle(color: Colors.white, fontSize: 16)),
+            ],
+          ),
+          content: const SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '1- برای استفاده از این برنامه کافی است روی آیکون قسمتهای مختلف برنامه در قسمت پایین آن کلید کنید. فهرست عناوین برای شما باز خواهد شد. هر کدام را مایل بودید انتخاب نموده و منتظر دانلود آن بمانید. سخنرانی ها به صورت خودکار پخش خواهند شد. متون به صورت فایلهای پی دی اف در کتابخوان همین برنامه باز خواهد شد.',
+                  style: TextStyle(color: Colors.white70, fontSize: 12.5, height: 1.6),
+                ),
+                SizedBox(height: 12),
+                Text(
+                  '2- روزی هر روز شما به صورت تصادفی با زدن کلید مربوط در ذیل صفحه برای شما نمایش داده خواهد شد.',
+                  style: TextStyle(color: Colors.white70, fontSize: 12.5, height: 1.6),
+                ),
+                SizedBox(height: 12),
+                Text(
+                  '3- از قسمت سه نقطه بالا می توانید با ما در ارتباط باشید و ما را در شبکه های مجازی جستجو کنید.',
+                  style: TextStyle(color: Colors.white70, fontSize: 12.5, height: 1.6),
+                ),
+                SizedBox(height: 12),
+                Text(
+                  '4- برای پیگیری موارد جدید لطفا روی علامت شیپور کلیک کنید.',
+                  style: TextStyle(color: Colors.white70, fontSize: 12.5, height: 1.6),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('بستن', style: TextStyle(color: Color(0xFFFF6B4A))),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
     showDialog(
       context: context,
       builder: (ctx) => Directionality(
