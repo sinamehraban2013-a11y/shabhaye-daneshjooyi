@@ -22,96 +22,115 @@ jobs:
         with:
           channel: stable
 
-      - name: Create clean Flutter project
+      - name: Create clean Flutter build project
         run: |
           flutter create app_build \
             --org ir.shiravi \
             --project-name shabha_daneshjooyi \
             --platforms=android
 
-      - name: Copy application files
+      - name: Copy project files and logo
         run: |
           set -e
 
-      - name: Copy Flutter Code and Pubspec
-        run: |
-          set -e
-          # کپی فایل pubspec اصلاح شده
+          # ۱. کپی فایل pubspec.yaml از ریشه مخزن
           if [ -f "pubspec.yaml" ]; then
+            echo "Copying pubspec.yaml from root..."
             cp "pubspec.yaml" "app_build/pubspec.yaml"
           else
-            cp "pubspec.yaml" "app_build/pubspec.yaml"
+            echo "ERROR: pubspec.yaml not found in root!"
+            ls -la
+            exit 1
           fi
 
-          # کپی فایل کد دارت اصلی
-          if [ -f "main.dart" ]; then
+          # ۲. کپی فایل main.dart از دایرکتوری lib
+          if [ -f "lib/main.dart" ]; then
+            echo "Copying main.dart from lib/..."
+            cp "lib/main.dart" "app_build/lib/main.dart"
+          elif [ -f "main.dart" ]; then
+            echo "Copying main.dart from root..."
             cp "main.dart" "app_build/lib/main.dart"
           else
-            cp "main.dart" "app_build/lib/main.dart"
+            echo "ERROR: main.dart not found in lib/ or root!"
+            find . -name "*.dart"
+            exit 1
           fi
 
+          # ۳. ساخت پوشه assets و کپی لوگو
           mkdir -p app_build/assets
 
-          if [ -f "logo-sh.png" ]; then
-            cp "logo-sh.png" "app_build/assets/logo-sh.png"
-          elif [ -f "assets/logo-sh.png" ]; then
+          if [ -f "assets/logo-sh.png" ]; then
+            echo "Found logo at assets/logo-sh.png"
             cp "assets/logo-sh.png" "app_build/assets/logo-sh.png"
-          elif [ -f "shabha_daneshjooyi/assets/logo-sh.png" ]; then
-            cp "shabha_daneshjooyi/assets/logo-sh.png" "app_build/assets/logo-sh.png"
+          elif [ -f "shabhaye-daneshjooyi/assets/logo-sh.png" ]; then
+            echo "Found logo at shabhaye-daneshjooyi/assets/logo-sh.png"
+            cp "shabhaye-daneshjooyi/assets/logo-sh.png" "app_build/assets/logo-sh.png"
+          elif [ -f "logo-sh.png" ]; then
+            echo "Found logo at logo-sh.png"
+            cp "logo-sh.png" "app_build/assets/logo-sh.png"
           else
-            echo "logo-sh.png not found"
+            echo "ERROR: logo-sh.png was not found anywhere!"
+            find . -name "*.png"
             exit 1
           fi
 
       - name: Configure Android Manifest (Persian Name & Permissions)
         run: |
           set -e
-          MANIFEST="app_build/android/app/src/main/AndroidManifest.xml"
-          
-          # ۱. تنظیم نام فارسی برنامه زیر آیکون در گوشی
-          sed -i 's/android:label="[^"]*"/android:label="شبهای دانشجوی"/g' "$MANIFEST"
-          
-          # ۲. افزودن مجوزهای لازم (اینترنت و یادآور روزانه)
           python3 - << 'EOF'
           import re
+
           path = "app_build/android/app/src/main/AndroidManifest.xml"
           with open(path, "r", encoding="utf-8") as f:
               content = f.read()
 
-          permissions = """
-              <uses-permission android:name="android.permission.INTERNET"/>
-              <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
-              <uses-permission android:name="android.permission.VIBRATE"/>
-              <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
-              <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM"/>
-          """
-          if "<uses-permission" not in content:
-              content = re.sub(r'(<manifest[^>]*>)', r'\1' + permissions, content, count=1)
-              with open(path, "w", encoding="utf-8") as f:
-                  f.write(content)
+          # تنظیم نام فارسی «شبهای دانشجوی» زیر آیکون برنامه در گوشی
+          app_match = re.search(r"<application\b[^>]*>", content, flags=re.DOTALL)
+          if app_match:
+              app_tag = app_match.group(0)
+              if 'android:label="' in app_tag:
+                  app_tag = re.sub(r'android:label="[^"]*"', 'android:label="شبهای دانشجوی"', app_tag, count=1)
+              else:
+                  app_tag = app_tag[:-1] + ' android:label="شبهای دانشجوی">'
+              content = content[:app_match.start()] + app_tag + content[app_match.end():]
+
+          # افزودن مجوزهای نوتیفیکیشن، ساعت ۱۷ و اینترنت
+          permissions = [
+              "android.permission.INTERNET",
+              "android.permission.RECEIVE_BOOT_COMPLETED",
+              "android.permission.VIBRATE",
+              "android.permission.POST_NOTIFICATIONS",
+              "android.permission.SCHEDULE_EXACT_ALARM",
+          ]
+
+          missing_permissions = []
+          for perm in permissions:
+              if f'android:name="{perm}"' not in content:
+                  missing_permissions.append(f'    <uses-permission android:name="{perm}"/>')
+
+          if missing_permissions:
+              app_idx = re.search(r"<application\b", content)
+              if app_idx:
+                  perm_str = "\n".join(missing_permissions) + "\n"
+                  content = content[:app_idx.start()] + perm_str + content[app_idx.start():]
+
+          with open(path, "w", encoding="utf-8") as f:
+              f.write(content)
+
+          print("AndroidManifest.xml successfully configured with Persian label and permissions.")
           EOF
-          
-      - name: Generate App Launcher Icons
+
+      - name: Generate Launcher Icons
         working-directory: app_build
         run: |
           flutter pub get
           dart run flutter_launcher_icons
 
-      - name: Build Android APK
+      - name: Build Android Release APK
         working-directory: app_build
         run: flutter build apk --release
 
-      - name: Install dependencies
-        working-directory: app_build
-        run: |
-          flutter pub get
-
-      - name: Build release APK
-        working-directory: app_build
-        run: |
-          flutter build apk --release
-
-      - name: Upload APK
+      - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
           name: shabha-daneshjooyi-App
