@@ -1277,6 +1277,7 @@ void _showFeedbackDialog() {
   } // <--- ۱. این آکولاد بسته به عنوان پایان _buildItemList اضافه شد
 
   // ۲. نسخه کامل و پارامتردار باز کردن ایتا (با پشتیبانی از اپ و وب)
+  // باز کردن کانال ایتا
   Future<void> _openEitaaChannel({
     required String appUrl,
     required String webUrl,
@@ -1291,7 +1292,7 @@ void _showFeedbackDialog() {
       } else {
         _showSnackBar('امکان باز کردن کانال ایتا وجود ندارد.', isError: true);
       }
-    } catch (e) {
+    } catch (_) {
       if (await canLaunchUrl(webUri)) {
         await launchUrl(webUri, mode: LaunchMode.externalApplication);
       } else {
@@ -1300,7 +1301,21 @@ void _showFeedbackDialog() {
     }
   }
 
-  // ۳. نسخه واحد و استاندارد برای اسنک‌بار
+  // باز کردن لینک‌های عمومی (بله، وب‌سایت، ایمیل بازخورد)
+  Future<void> _launchURL(String urlString) async {
+    final uri = Uri.parse(urlString);
+    try {
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      } else {
+        _showSnackBar('امکان باز کردن این پیوند وجود ندارد.', isError: true);
+      }
+    } catch (_) {
+      _showSnackBar('خطا در باز کردن پیوند', isError: true);
+    }
+  }
+
+  // نمایش پیام
   void _showSnackBar(String message, {bool isError = false}) {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
@@ -1316,7 +1331,7 @@ void _showFeedbackDialog() {
     );
   }
 
-  // ۴. نسخه واحد برای خوانده‌شده‌ها
+  // علامت‌گذاری خوانده‌شده‌ها
   void _markAsRead(String id) async {
     if (!_readItemIds.contains(id)) {
       setState(() {
@@ -1328,28 +1343,6 @@ void _showFeedbackDialog() {
       } catch (_) {}
     }
   }
-  void _showAboutDialog() {
-    showDialog(
-      context: context,
-      builder: (ctx) => Directionality(
-        textDirection: TextDirection.rtl,
-        child: AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          title: const Text('درباره برنامه'),
-          content: const Text(
-            'اپلیکیشن شب‌های دانشجویی\nگردآوری بیانات و آثار استاد شیروی\nنسخه ۱.۰.۰',
-            style: TextStyle(height: 1.6),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: const Text('بستن'),
-            ),
-          ],
-        ),
-      ),
-    );
-  } 
 }
 
 // ==========================================
