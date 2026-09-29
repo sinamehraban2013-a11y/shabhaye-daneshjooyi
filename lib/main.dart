@@ -729,36 +729,6 @@ class _QuoteMarqueeState extends State<QuoteMarquee> {
       builder: (ctx) => Padding(
         padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
         child: Column(
-          mainAxisSize: MainAxisSize.min10),
-              Text('• تست MBTI:', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFFFF6B4A))),
-              Text('با پاسخ به ۳۲ سوال، سنخ شخصیتی خود را شناسایی نمایید.', style: TextStyle(fontSize: 12.5)),
-              SizedBox(height: 10),
-              Text('• بخش محصولات:', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFFFF6B4A))),
-              Text('سایر برنامه‌ها نظیر بازی جورچین و نرم‌افزارهای آموزشی از این بخش قابل بارگیری و نصب است.', style: TextStyle(fontSize: 12.5)),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('بستن', style: TextStyle(color: Color(0xFFFF6B4A))),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // مورد ۶: منوی سه نقطه به صورت Bottom Sheet
-  void _showCustomBottomSheetMenu() {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: const Color(0xFF27293D),
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (ctx) => Padding(
-        padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
-        child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             ListTile(
