@@ -24,6 +24,7 @@ const String reportScriptUrl = 'https://script.google.com/macros/s/AKfycbxCPa7OP
 const String ketabFolderId = '1J3N_YOUR_KETAB_FOLDER_ID';
 const String maghalehFolderId = '1K4M_YOUR_MAGHALEH_FOLDER_ID';
 const String otherProductsFolderId = '1GLHWFZK0fy74rCz2t-5h4T0UYiZnaZ94';
+const String announcementFileId = '1aDcz3OOlf8oGcYmqt7gt3pJXuJjQmasGN_YqpCrorjg'; // شناسه فایل متنی اطلاعیه در گوگل درایو
 
 // لیست جملات کتاب «هزاران فکر عمیق» جهت نمایش در نوار پیمایش افقی (Marquee)
 const List<String> deepThoughtsQuotes = [
@@ -631,7 +632,22 @@ class _QuoteMarqueeState extends State<QuoteMarquee> {
       ),
     );
   }
-
+            
+  // متد خواندن مستقیم متن اطلاعیه از فایل درایو
+  Future<String?> _fetchAnnouncementText() async {
+    try {
+      final url = '$scriptApiUrl?fileId=$announcementFileId';
+      final response = await http.get(Uri.parse(url)).timeout(const Duration(seconds: 10));
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (data is Map && data.containsKey('content')) {
+          return data['content'].toString();
+        }
+        return response.body;
+      }
+    } catch (_) {}
+    return null;
+  }
   // مورد ۴: شیپور (دریافت پیام و اطلاعیه جدید از گوگل درایو)
   Future<void> _showNotificationNotice() async {
     showDialog(
