@@ -470,6 +470,37 @@ class _QuoteMarqueeState extends State<QuoteMarquee> {
   }
 }
 
+class HomeScreen extends StatefulWidget {
+  const HomeScreen({super.key});
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  final TextEditingController _searchController = TextEditingController();
+  bool _isSearching = false;
+  String _searchQuery = '';
+  int _selectedIndex = 0;
+  bool _isLoading = true;
+  String _errorMessage = '';
+
+  List<DriveItem> _texts = [];
+  List<DriveItem> _lectures = [];
+  List<DriveItem> _otherProducts = [];
+  List<String> _readItemIds = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchAllData();
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
   Future<void> _fetchAllData() async {
     setState(() {
       _isLoading = true;
@@ -579,62 +610,6 @@ class _QuoteMarqueeState extends State<QuoteMarquee> {
     List<DriveItem> pool = [..._texts, ..._lectures];
     if (pool.isEmpty) {
       _showSnackBar('محتوا هنوز بارگذاری نشده است.');
-      return;
-    }
-
-    final randomItem = pool[Random().nextInt(pool.length)];
-    final bool isAudio = randomItem.name.toLowerCase().endsWith('.mp3');
-
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF27293D),
-        title: const Row(
-          children: [
-            Icon(Icons.card_giftcard, color: Color(0xFFFF6B4A)),
-            SizedBox(width: 8),
-            Text('روزیِ امروز شما', style: TextStyle(fontSize: 16)),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'امروز این تحفه‌ی فکری و معنوی برای شما انتخاب شده است:',
-              style: TextStyle(fontSize: 13, color: Colors.white70),
-            ),
-            const SizedBox(height: 12),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: const Color(0xFF1E1E2E),
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: const Color(0xFFFF6B4A).withOpacity(0.5)),
-              ),
-              child: Row(
-                children: [
-                  Icon(isAudio ? Icons.headphones : Icons.menu_book, color: const Color(0xFFFF6B4A)),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      randomItem.name,
-                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('بعداً', style: TextStyle(color: Colors.white60)),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFFF6B4A)),
-            onPressed: () {
       return;
     }
 
@@ -814,6 +789,9 @@ class _QuoteMarqueeState extends State<QuoteMarquee> {
       ),
     );
   }
+            
+void _showFeedbackDialog() {
+    final textController = TextEditingController();
     showDialog(
       context: context,
       builder: (ctx) => Directionality(
@@ -1069,7 +1047,41 @@ class _QuoteMarqueeState extends State<QuoteMarquee> {
       },
     );
   }
-
+  
+  void _showCustomBottomSheetMenu() {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _buildMenuSheetItem(
+                icon: Icons.help_outline,
+                title: 'راهنما',
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _showHelpDialog();
+                },
+              ),
+              _buildMenuSheetItem(
+                icon: Icons.feedback_outlined,
+                title: 'ارسال نظر و بازخورد',
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _showFeedbackDialog();
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
   // مورد ۷: تایید خروج با کلیک روی Back گوشی
   Future<bool> _onWillPop() async {
     final bool? exitApp = await showDialog<bool>(
