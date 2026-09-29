@@ -33,22 +33,21 @@ jobs:
         run: |
           set -e
 
+      - name: Copy Flutter Code and Pubspec
+        run: |
+          set -e
+          # کپی فایل pubspec اصلاح شده
           if [ -f "pubspec.yaml" ]; then
             cp "pubspec.yaml" "app_build/pubspec.yaml"
-          elif [ -f "shabha_daneshjooyi/pubspec.yaml" ]; then
-            cp "shabha_daneshjooyi/pubspec.yaml" "app_build/pubspec.yaml"
           else
-            echo "pubspec.yaml not found"
-            exit 1
+            cp "pubspec.yaml" "app_build/pubspec.yaml"
           fi
 
+          # کپی فایل کد دارت اصلی
           if [ -f "main.dart" ]; then
             cp "main.dart" "app_build/lib/main.dart"
-          elif [ -f "shabha_daneshjooyi/lib/main.dart" ]; then
-            cp "shabha_daneshjooyi/lib/main.dart" "app_build/lib/main.dart"
           else
-            echo "main.dart not found"
-            exit 1
+            cp "main.dart" "app_build/lib/main.dart"
           fi
 
           mkdir -p app_build/assets
@@ -64,33 +63,43 @@ jobs:
             exit 1
           fi
 
-      - name: Add Android internet permission
+      - name: Configure Android Manifest (Persian Name & Permissions)
         run: |
-          python3 - <<'PY'
-          from pathlib import Path
+          set -e
+          MANIFEST="app_build/android/app/src/main/AndroidManifest.xml"
+          
+          # ۱. تنظیم نام فارسی برنامه زیر آیکون در گوشی
+          sed -i 's/android:label="[^"]*"/android:label="شبهای دانشجوی"/g' "$MANIFEST"
+          
+          # ۲. افزودن مجوزهای لازم (اینترنت و یادآور روزانه)
+          python3 - << 'EOF'
+          import re
+          path = "app_build/android/app/src/main/AndroidManifest.xml"
+          with open(path, "r", encoding="utf-8") as f:
+              content = f.read()
 
-          manifest = Path(
-              "app_build/android/app/src/main/AndroidManifest.xml"
-          )
+          permissions = """
+              <uses-permission android:name="android.permission.INTERNET"/>
+              <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
+              <uses-permission android:name="android.permission.VIBRATE"/>
+              <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+              <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM"/>
+          """
+          if "<uses-permission" not in content:
+              content = re.sub(r'(<manifest[^>]*>)', r'\1' + permissions, content, count=1)
+              with open(path, "w", encoding="utf-8") as f:
+                  f.write(content)
+          EOF
+          
+      - name: Generate App Launcher Icons
+        working-directory: app_build
+        run: |
+          flutter pub get
+          dart run flutter_launcher_icons
 
-          text = manifest.read_text(encoding="utf-8")
-
-          permission = (
-              '    <uses-permission '
-              'android:name="android.permission.INTERNET"/>\n'
-          )
-
-          if "android.permission.INTERNET" not in text:
-              text = text.replace(
-                  "<manifest",
-                  "<manifest",
-                  1
-              )
-              position = text.find(">")
-              text = text[:position + 1] + "\n" + permission + text[position + 1:]
-
-          manifest.write_text(text, encoding="utf-8")
-          PY
+      - name: Build Android APK
+        working-directory: app_build
+        run: flutter build apk --release
 
       - name: Install dependencies
         working-directory: app_build
