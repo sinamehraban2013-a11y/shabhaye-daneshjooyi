@@ -17,7 +17,7 @@ import 'package:url_launcher/url_launcher.dart';
 // ==========================================
 // تنظیمات و شناسه‌های گوگل‌درایو و اسکریپت‌ها
 // ==========================================
-const String scriptApiUrl = 'https://script.google.com/macros/s/AKfycbyq60jQ7i_4p2iQoN6Kj9uLqNq3e9aB4s5d_EXAMPLE/exec'; 
+const String scriptApiUrl = 'https://script.google.com/macros/s/AKfycbwBLyDbJu78M_nxaZtfcfFtd6DSMp6yl3Lu2lPOPwimuDynqGN8cTvZr4JpN3eJhxGA/exec'; 
 // !!! آدرس وب‌اپ گوگل‌شیت خود را در متغیر زیر قرار دهید:
 const String reportScriptUrl = 'https://script.google.com/macros/s/AKfycbxCPa7OPOr2Koa9umXaSkd8xoMTvhpPlCNJKDvptSIOTNpRuy01r9N3s-AVuujd75L8/exec';
 
