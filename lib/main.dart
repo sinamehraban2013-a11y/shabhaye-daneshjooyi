@@ -1036,7 +1036,7 @@ void _showFeedbackDialog() {
                     iconBgColor: const Color(0xFFFFE0B2),
                     onTap: () {
                       Navigator.pop(ctx);
-                      _showContactDialog();
+                      _showFeedbackDialog();
                     },
                   ),
                 ],
@@ -1149,7 +1149,7 @@ void _showFeedbackDialog() {
             IconButton(
               icon: const Icon(Icons.more_vert),
               tooltip: 'بیشتر',
-              onPressed: _showCustomBottomSheetMenu,
+              onPressed: _showMoreMenuSheet,
             ),
           ],
         ),
