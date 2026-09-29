@@ -730,7 +730,7 @@ class _QuoteMarqueeState extends State<QuoteMarquee> {
                 ),
                 SizedBox(height: 12),
                 Text(
-                  '4- برای پیگیری موارد جدید لطفا روی علامت شیپور کلیک کنید.',
+                  '4- برای دریافت اطلاعیه ها و موارد جدید، لطفا روی علامت شیپور کلیک کنید.',
                   style: TextStyle(color: Colors.white70, fontSize: 12.5, height: 1.6),
                 ),
               ],
