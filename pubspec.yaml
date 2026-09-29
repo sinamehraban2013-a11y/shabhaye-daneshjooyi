@@ -1,5 +1,5 @@
-name: shabhaye_daneshjooyi
-description: "اپلیکیشن شب‌های دانشجویی"
+name: shabha_daneshjooyi
+description: "اپلیکیشن شب‌های دانشجویی - استاد شیروی"
 publish_to: 'none'
 version: 1.0.0+1
 
@@ -11,21 +11,31 @@ dependencies:
     sdk: flutter
   flutter_localizations:
     sdk: flutter
-  flutter_local_notifications: ^17.1.2
+
+  # پکیج‌های شبکه و بارگذاری
+  http: ^1.2.1
+  url_launcher: ^6.3.0
+  path_provider: ^2.1.3
+  open_filex: ^4.5.0
+  
+  # نمایش پی‌دی‌اف
+  syncfusion_flutter_pdfviewer: ^28.2.7
+  
+  # مدیریت اطلاعات دستگاه و زمان
+  device_info_plus: ^11.2.0
+  intl: any
+
+  # نوتیفیکیشن روزانه ساعت ۱۷
+  flutter_local_notifications: ^17.2.2
   timezone: ^0.9.4
-  shared_preferences: ^2.2.2
-  device_info_plus: ^10.1.0
-  open_file: ^3.3.2
-  http: ^1.2.0
-  path_provider: ^2.1.2
-  syncfusion_flutter_pdfviewer: any
-  url_launcher: ^6.2.4
-  audioplayers: ^6.0.0
+
+  # آیکون‌ها و ابزارها
+  cupertino_icons: ^1.0.8
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  flutter_lints: ^3.0.0
+  flutter_lints: ^4.0.0
   flutter_launcher_icons: ^0.14.3
 
 flutter_launcher_icons:
@@ -35,6 +45,5 @@ flutter_launcher_icons:
 
 flutter:
   uses-material-design: true
-
   assets:
     - assets/logo-sh.png
