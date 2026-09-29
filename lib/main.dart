@@ -1274,77 +1274,60 @@ void _showFeedbackDialog() {
         },
       ),
     );
-  Future<void> _openEitaaChannel({required String appUrl, required String webUrl}) async {
+  } // <--- ۱. این آکولاد بسته به عنوان پایان _buildItemList اضافه شد
+
+  // ۲. نسخه کامل و پارامتردار باز کردن ایتا (با پشتیبانی از اپ و وب)
+  Future<void> _openEitaaChannel({
+    required String appUrl,
+    required String webUrl,
+  }) async {
     final appUri = Uri.parse(appUrl);
     final webUri = Uri.parse(webUrl);
-
     try {
       if (await canLaunchUrl(appUri)) {
         await launchUrl(appUri, mode: LaunchMode.externalApplication);
       } else if (await canLaunchUrl(webUri)) {
         await launchUrl(webUri, mode: LaunchMode.externalApplication);
       } else {
-        _showSnackBar('امکان باز کردن کانال ایتا وجود ندارد.');
+        _showSnackBar('امکان باز کردن کانال ایتا وجود ندارد.', isError: true);
       }
     } catch (e) {
       if (await canLaunchUrl(webUri)) {
         await launchUrl(webUri, mode: LaunchMode.externalApplication);
       } else {
-        _showSnackBar('خطا در باز کردن پیوند');
+        _showSnackBar('خطا در باز کردن پیوند', isError: true);
       }
     }
   }
 
-  void _markAsRead(String id) async {
-    setState(() {
-      _readItemIds.add(id);
-    });
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setStringList('read_items', _readItemIds.toList());
-    } catch (_) {}
-  }
-
-  void _showSnackBar(String message) {
+  // ۳. نسخه واحد و استاندارد برای اسنک‌بار
+  void _showSnackBar(String message, {bool isError = false}) {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(message, textAlign: TextAlign.right, style: const TextStyle(fontFamily: 'Vazirmatn')),
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
-  }
-    
-   void _showSnackBar(String message, {bool isError = false}) {
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message, textAlign: TextAlign.right),
+        content: Text(
+          message,
+          textAlign: TextAlign.right,
+          style: const TextStyle(fontFamily: 'Vazirmatn'),
+        ),
         backgroundColor: isError ? Colors.red.shade700 : Colors.teal.shade800,
         behavior: SnackBarBehavior.floating,
       ),
     );
   }
 
+  // ۴. نسخه واحد برای خوانده‌شده‌ها
   void _markAsRead(String id) async {
     if (!_readItemIds.contains(id)) {
       setState(() {
         _readItemIds.add(id);
       });
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setStringList('read_items', _readItemIds);
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setStringList('read_items', _readItemIds.toList());
+      } catch (_) {}
     }
   }
-
-  Future<void> _launchURL(String urlString) async {
-    // در صورت نیاز به باز کردن لینک خارجی
-    _showSnackBar('در حال انتقال: $urlString');
-  }
-
-  void _openEitaaChannel() {
-    _launchURL('https://eitaa.com/shabhaye_daneshjooyi');
-  }
-
   void _showAboutDialog() {
     showDialog(
       context: context,
