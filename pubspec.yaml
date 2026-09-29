@@ -30,6 +30,4 @@ dev_dependencies:
 flutter:
   uses-material-design: true
   assets:
-    # اگر این فایل‌ها در مخزن وجود دارند، علامت # را از خط مربوطه بردارید.
-    # - assets/mahfel_ons_animation.gif
-    # - assets/logo.png
+ - assets/logo-sh.png
