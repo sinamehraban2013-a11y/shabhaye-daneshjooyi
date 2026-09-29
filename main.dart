@@ -1,28 +1,46 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:math';
+
+import 'package:audioplayers/audioplayers.dart';
+import 'package:device_info_plus/device_info_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:http/http.dart' as http;
+import 'package:open_file/open_file.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:syncfusion_flutter_pdfviewer/pdfviewer.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:audioplayers/audioplayers.dart';
 
 // ==========================================
-// تنظیمات گوگل درایو و اسکریپت
+// تنظیمات و شناسه‌های گوگل‌درایو و اسکریپت‌ها
 // ==========================================
-const String scriptApiUrl =
-    'https://script.google.com/macros/s/AKfycbwBLyDbJu78M_nxaZtfcfFtd6DSMp6yl3Lu2lPOPwimuDynqGN8cTvZr4JpN3eJhxGA/exec';
-const String ketabFolderId = '1R7LxofkSaSz5EGsgSv1TSbBAbJR_wE82';
-const String maghalehFolderId = '16aRam3dFDXiFl0bgQN-3a5iZP6Q4HPE9';
-// ==========================================
+const String scriptApiUrl = 'https://script.google.com/macros/s/AKfycbyq60jQ7i_4p2iQoN6Kj9uLqNq3e9aB4s5d_EXAMPLE/exec'; 
+// !!! آدرس وب‌اپ گوگل‌شیت خود را در متغیر زیر قرار دهید:
+const String reportScriptUrl = 'https://script.google.com/macros/s/YOUR_REPORT_SCRIPT_URL_HERE/exec';
 
-void main() {
+const String ketabFolderId = '1J3N_YOUR_KETAB_FOLDER_ID';
+const String maghalehFolderId = '1K4M_YOUR_MAGHALEH_FOLDER_ID';
+const String otherProductsFolderId = '1GLHWFZK0fy74rCz2t-5h4T0UYiZnaZ94';
+
+// لیست جملات کتاب «هزاران فکر عمیق» جهت نمایش در نوار پیمایش افقی (Marquee)
+const List<String> deepThoughtsQuotes = [
+  "تفکر، پنجره‌ای رو به کشف ناشناخته‌هاست.",
+  "هر پرسش عمیق، بذری است برای رویش پاسخی ژرف.",
+  "در سکوت درون است که والاترین اندیشه‌ها متولد می‌شوند.",
+  "دانش حقیقی آن است که جان را روشنایی و دل را آرامش بخشد.",
+  "جهان را آن‌گونه که هست بشناس، نه آن‌گونه که دیگران تصویر می‌کنند.",
+  "بزرگ‌ترین شجاعت، ایستادن در برابر باورهای ناآزموده خویش است."
+];
+
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   runApp(const ShabHayeDaneshjouyiApp());
 }
 
+// مدل آیتم‌های فایل گوگل درایو
 class DriveItem {
   final String id;
   final String name;
@@ -31,8 +49,8 @@ class DriveItem {
 
   factory DriveItem.fromJson(Map<String, dynamic> json) {
     return DriveItem(
-      id: json['id'] ?? '',
-      name: json['name'] ?? '',
+      id: json['id']?.toString() ?? '',
+      name: json['name']?.toString() ?? 'بدون نام',
     );
   }
 }
@@ -43,33 +61,42 @@ class ShabHayeDaneshjouyiApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      debugShowCheckedModeBanner: false,
       title: 'شب‌های دانشجویی',
+      debugShowCheckedModeBanner: false,
       locale: const Locale('fa', 'IR'),
-      supportedLocales: const [Locale('fa', 'IR')],
+      supportedLocales: const [
+        Locale('fa', 'IR'),
+      ],
       localizationsDelegates: const [
         GlobalMaterialLocalizations.delegate,
         GlobalWidgetsLocalizations.delegate,
         GlobalCupertinoLocalizations.delegate,
       ],
       theme: ThemeData(
-        useMaterial3: true,
-        scaffoldBackgroundColor: const Color(0xFF1E1E2E), // پس‌زمینه تیره مدرن و شاداب
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFFFF6B4A), // نارنجی-مرجانی گرم دانشجویی
-          brightness: Brightness.dark,
+        brightness: Brightness.dark,
+        scaffoldBackgroundColor: const Color(0xFF1E1E2E),
+        primaryColor: const Color(0xFFFF6B4A),
+        colorScheme: const ColorScheme.dark(
+          primary: Color(0xFFFF6B4A),
+          secondary: Color(0xFF38BDF8),
+          surface: Color(0xFF27293D),
         ),
         appBarTheme: const AppBarTheme(
-          backgroundColor: Color(0xFF181825),
-          foregroundColor: Colors.white,
-          elevation: 0,
+          backgroundColor: Color(0xFF27293D),
+          elevation: 2,
+          centerTitle: true,
+          titleTextStyle: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
         ),
+        useMaterial3: true,
       ),
       home: const SplashScreen(),
     );
   }
 }
 
+// ==========================================
+// صفحه اسپلش و بررسی Onboarding
+// ==========================================
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
 
@@ -81,55 +108,49 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   void initState() {
     super.initState();
-    Timer(const Duration(seconds: 3), () {
-      if (mounted) {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => const HomeScreen()),
-        );
-      }
-    });
+    _checkNavigation();
+  }
+
+  Future<void> _checkNavigation() async {
+    await Future.delayed(const Duration(seconds: 2));
+    final prefs = await SharedPreferences.getInstance();
+    final bool isRegistered = prefs.getBool('is_registered') ?? false;
+
+    if (!mounted) return;
+
+    if (isRegistered) {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => const HomeScreen()),
+      );
+    } else {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => const OnboardingScreen()),
+      );
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFF1E1E2E),
+    return const Scaffold(
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Container(
-              padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                color: const Color(0xFFFF6B4A).withOpacity(0.12),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(
-                Icons.school_rounded,
-                size: 90,
-                color: Color(0xFFFF6B4A),
-              ),
-            ),
-            const SizedBox(height: 24),
-            const Text(
+            Icon(Icons.school, size: 85, color: Color(0xFFFF6B4A)),
+            SizedBox(height: 20),
+            Text(
               'شب‌های دانشجویی',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 28,
-                fontWeight: FontWeight.bold,
-                letterSpacing: 1.2,
-              ),
+              style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold, color: Colors.white),
             ),
-            const SizedBox(height: 8),
-            const Text(
-              'تلاقیِ اندیشه، معرفت و پویایی',
-              style: TextStyle(
-                color: Color(0xFFFFB300),
-                fontSize: 15,
-                fontWeight: FontWeight.w500,
-              ),
+            SizedBox(height: 10),
+            Text(
+              'اندیشه، دانایی و رشد فردی',
+              style: TextStyle(fontSize: 14, color: Colors.white70),
             ),
+            SizedBox(height: 35),
+            CircularProgressIndicator(color: Color(0xFFFF6B4A)),
           ],
         ),
       ),
@@ -137,201 +158,939 @@ class _SplashScreenState extends State<SplashScreen> {
   }
 }
 
-class PdfViewerScreen extends StatelessWidget {
-  final File file;
-  final String title;
+// ==========================================
+// صفحه Onboarding (دریافت نام، سن و ارسال به شیت)
+// ==========================================
+class OnboardingScreen extends StatefulWidget {
+  const OnboardingScreen({super.key});
 
-  const PdfViewerScreen({super.key, required this.file, required this.title});
+  @override
+  State<OnboardingScreen> createState() => _OnboardingScreenState();
+}
+
+class _OnboardingScreenState extends State<OnboardingScreen> {
+  final _nameController = TextEditingController();
+  final _ageController = TextEditingController();
+  final _formKey = GlobalKey<FormState>();
+  bool _isLoading = false;
+
+  Future<void> _submitInfo() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    setState(() => _isLoading = true);
+
+    String name = _nameController.text.trim();
+    String age = _ageController.text.trim();
+
+    String deviceModel = 'ناشناخته';
+    String osVersion = 'ناشناخته';
+    String deviceId = 'ناشناخته';
+
+    try {
+      final deviceInfo = DeviceInfoPlugin();
+      if (Platform.isAndroid) {
+        final androidInfo = await deviceInfo.androidInfo;
+        deviceModel = '${androidInfo.manufacturer} ${androidInfo.model}';
+        osVersion = 'Android ${androidInfo.version.release} (SDK ${androidInfo.version.sdkInt})';
+        deviceId = androidInfo.id;
+      }
+    } catch (_) {}
+
+    // ذخیره در حافظه محلی
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('user_name', name);
+    await prefs.setString('user_age', age);
+    await prefs.setBool('is_registered', true);
+
+    // ارسال مشخصات به Google Sheets
+    try {
+      if (reportScriptUrl.startsWith('https://script.google.com')) {
+        await http.post(
+          Uri.parse(reportScriptUrl),
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode({
+            'name': name,
+            'age': age,
+            'deviceModel': deviceModel,
+            'osVersion': osVersion,
+            'deviceId': deviceId,
+          }),
+        ).timeout(const Duration(seconds: 7));
+      }
+    } catch (_) {
+      // در صورت نبود اینترنت در مرحله اول، خطا مانع ورود کاربر نمی‌شود
+    }
+
+    if (!mounted) return;
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (context) => const HomeScreen()),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          title,
-          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
+      body: SafeArea(
+        child: Center(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(24.0),
+            child: Form(
+              key: _formKey,
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.person_pin_circle_outlined, size: 75, color: Color(0xFFFF6B4A)),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'به جمع شب‌های دانشجویی خوش آمدید!',
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'جهت شخصی‌سازی محتوا و همراهی بهتر، لطفاً مشخصات خود را وارد کنید:',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontSize: 13, color: Colors.white70),
+                  ),
+                  const SizedBox(height: 25),
+                  TextFormField(
+                    controller: _nameController,
+                    decoration: InputDecoration(
+                      labelText: 'نام و نام خانوادگی',
+                      prefixIcon: const Icon(Icons.person),
+                      filled: true,
+                      fillColor: const Color(0xFF27293D),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                    validator: (val) => val == null || val.trim().isEmpty ? 'لطفاً نام خود را وارد کنید' : null,
+                  ),
+                  const SizedBox(height: 16),
+                  TextFormField(
+                    controller: _ageController,
+                    keyboardType: TextInputType.number,
+                    decoration: InputDecoration(
+                      labelText: 'سن',
+                      prefixIcon: const Icon(Icons.calendar_today),
+                      filled: true,
+                      fillColor: const Color(0xFF27293D),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                    validator: (val) => val == null || val.trim().isEmpty ? 'لطفاً سن خود را وارد کنید' : null,
+                  ),
+                  const SizedBox(height: 24),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 50,
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFFFF6B4A),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                      onPressed: _isLoading ? null : _submitInfo,
+                      child: _isLoading
+                          ? const CircularProgressIndicator(color: Colors.white)
+                          : const Text('ورود به برنامه', style: TextStyle(fontSize: 16, color: Colors.white)),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
         ),
-        centerTitle: true,
-      ),
-      body: SfPdfViewer.file(
-        file,
-        canShowScrollHead: true,
       ),
     );
   }
 }
 
-// صفحه اختصاصی پخش فایل صوتی
+// ==========================================
+// ویجت نوار پیمایش متنی افقی (Marquee)
+// ==========================================
+class QuoteMarquee extends StatefulWidget {
+  const QuoteMarquee({super.key});
+
+  @override
+  State<QuoteMarquee> createState() => _QuoteMarqueeState();
+}
+
+class _QuoteMarqueeState extends State<QuoteMarquee> {
+  final ScrollController _scrollController = ScrollController();
+  Timer? _timer;
+  late final String _allText;
+
+  @override
+  void initState() {
+    super.initState();
+    _allText = deepThoughtsQuotes.join('  ✦  ') + '  ✦  ';
+    WidgetsBinding.instance.addPostFrameCallback((_) => _startScrolling());
+  }
+
+  void _startScrolling() {
+    _timer = Timer.periodic(const Duration(milliseconds: 40), (timer) {
+      if (!_scrollController.hasClients) return;
+      double maxScroll = _scrollController.position.maxScrollExtent;
+      double current = _scrollController.offset;
+      if (current >= maxScroll) {
+        _scrollController.jumpTo(0);
+      } else {
+        _scrollController.animateTo(
+          current + 1.5,
+          duration: const Duration(milliseconds: 40),
+          curve: Curves.linear,
+        );
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 38,
+      decoration: const BoxDecoration(
+        color: Color(0xFF27293D),
+        border: Border(bottom: BorderSide(color: Color(0x33FF6B4A), width: QuoteMarquee> createState() => _QuoteMarqueeState();
+}
+
+class _QuoteMarqueeState extends State<QuoteMarquee> {
+  final ScrollController _scrollController = ScrollController();
+  Timer? _timer;
+  late final String _allText;
+
+  @override
+  void initState() {
+    super.initState();
+    _allText = deepThoughtsQuotes.join('  ✦  ') + '  ✦  ';
+    WidgetsBinding.instance.addPostFrameCallback((_) => _startScrolling());
+  }
+
+  void _startScrolling() {
+    _timer = Timer.periodic(const Duration(milliseconds: 40), (timer) {
+      if (!_scrollController.hasClients) return;
+      double maxScroll = _scrollController.position.maxScrollExtent;
+      double current = _scrollController.offset;
+      if (current >= maxScroll) {
+        _scrollController.jumpTo(0);
+      } else {
+        _scrollController.animateTo(
+          current + 1.5,
+          duration: const Duration(milliseconds: 40),
+          curve: Curves.linear,
+        );
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 38,
+      decoration: const BoxDecoration(
+        color: Color(0xFF27293D),
+        border: Border(bottom: BorderSide(color: Color(0x33FF6B4A), width: 1)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            color: const Color(0xFFFF6B4A).withOpacity(0.2),
+            child: const Row(
+              children: [
+                Icon(Icons.auto_stories, size: 16, color: Color(0xFFFF6B4A)),
+                SizedBox(width: 4),
+                Text('هزاران فکر عمیق:', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFFFF6B4A))),
+              ],
+            ),
+          ),
+          Expanded(
+            child: ListView(
+              controller: _scrollController,
+              scrollDirection: Axis.horizontal,
+              physics: const NeverScroll    setState(() {
+      _readItemIds.add(id);
+    });
+    await prefs.setStringList('read_items_ids', _readItemIds.toList());
+  }
+
+  Future<void> _fetchAllData() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = '';
+    });
+
+    try {
+      final results = await Future.wait([
+        _fetchFolder(ketabFolderId),
+        _fetchFolder(maghalehFolderId),
+        _fetchFolder(otherProductsFolderId),
+      ]);
+
+      setState(() {
+        _texts = results[0];
+        _lectures = results[1];
+        _otherProducts = results[2];
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _errorMessage = 'خطای اتصال به اینترنت. لطفاً مجدداً بررسی نمایید.';
+        _isLoading = false;
+      });
+    }
+  }
+
+  Future<List<DriveItem>> _fetchFolder(String folderId) async {
+    final url = '$scriptApiUrl?folderId=$folderId';
+    final response = await http.get(Uri.parse(url)).timeout(const Duration(seconds: 15));
+    if (response.statusCode == 200) {
+      final List<dynamic> data = jsonDecode(response.body);
+      return data.map((json) => DriveItem.fromJson(json)).toList();
+    }
+    return [];
+  }
+
+  // دانلود و باز کردن فایل
+  Future<void> _downloadAndOpen(DriveItem item, {bool isApk = false}) async {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(
+        child: Card(
+          color: Color(0xFF27293D),
+          child: Padding(
+            padding: EdgeInsets.all(24.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                CircularProgressIndicator(color: Color(0xFFFF6B4A)),
+                SizedBox(height: 16),
+                Text('در حال دریافت و آماده‌سازی فایل...', style: TextStyle(color: Colors.white)),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+
+    try {
+      final downloadUrl = 'https://drive.google.com/uc?export=download&id=${item.id}';
+      final response = await http.get(Uri.parse(downloadUrl)).timeout(const Duration(seconds: 45));
+
+      if (response.statusCode == 200) {
+        final tempDir = await getTemporaryDirectory();
+        
+        // ثبت به عنوان خوانده شده
+        await _markAsRead(item.id);
+
+        if (!mounted) return;ترنت. لطفاً مجدداً بررسی نمایید.';
+        _isLoading = false;
+      });
+    }
+  }
+
+  Future<List<DriveItem>> _fetchFolder(String folderId) async {
+    final url = '$scriptApiUrl?folderId=$folderId';
+    final response = await http.get(Uri.parse(url)).timeout(const Duration(seconds: 15));
+    if (response.statusCode == 200) {
+      final List<dynamic> data = jsonDecode(response.body);
+      return data.map((json) => DriveItem.fromJson(json)).toList();
+    }
+    return [];
+  }
+
+  // دانلود و باز کردن فایل
+  Future<void> _downloadAndOpen(DriveItem item, {bool isApk = false}) async {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(
+        child: Card(
+          color: Color(0xFF27293D),
+          child: Padding(
+            padding: EdgeInsets.all(24.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                CircularProgressIndicator(color: Color(0xFFFF6B4A)),
+                SizedBox(height: 16),
+                Text('در حال دریافت و آماده‌سازی فایل...', style: TextStyle(color: Colors.white)),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+
+    try {
+      final downloadUrl = 'https://drive.google.com/uc?export=download&id=${item.id}';
+      final response = await http.get(Uri.parse(downloadUrl)).timeout(const Duration(seconds: 45));
+
+      if (response.statusCode == 200) {
+        final tempDir = await getTemporaryDirectory();
+        
+        // ثبت به عنوان خوانده شده
+        await _markAsRead(item.id);
+
+        if (!mounted) return;
+        Navigator.pop(context); // بستن لودینگ
+
+        if (isApk) {
+          // مدیریت فایل‌های با پسوند .bin یا تغییر نام به .apk
+          String cleanName = item.name.endsWith('.bin') ? item.name.showSnackBar(String text) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(text)));
+  }
+
+  // مورد ۱: قابلیت «روزیِ من» (انتخاب تصادفی یک صوت یا متن)
+  void _openDailyBlessing() {
+    List<DriveItem> pool = [..._texts, ..._lectures];
+    if (pool.isEmpty) {
+      _showSnackBar('محتوا هنوز بارگذاری نشده است.');
+      return;
+    }
+
+    final randomItem = pool[Random().nextInt(pool.length)];
+    final bool isAudio = randomItem.name.toLowerCase().endsWith('.mp3');
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF27293D),
+        title: const Row(
+          children: [
+            Icon(Icons.card_giftcard, color: Color(0xFFFF6B4A)),
+            SizedBox(width: 8),
+            Text('روزیِ امروز شما', style: TextStyle(fontSize: 16)),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'امروز این تحفه‌ی فکری و معنوی برای شما انتخاب شده است:',
+              style: TextStyle(fontSize: 13, color: Colors.white70),
+            ),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: const Color(0xFF1E1E2E),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: const Color(0xFFFF6B4A).withOpacity(0.5)),
+              ),
+              child: Row(
+                children: [
+                  Icon(isAudio ? Icons.headphones : Icons.menu_book, color: const Color(0xFFFF6B4A)),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      randomItem.name,
+                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('بعداً', style: TextStyle(color: Colors.white60)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFFF6B4A)),
+            onPressed: () {
+      return;
+    }
+
+    final randomItem = pool[Random().nextInt(pool.length)];
+    final bool isAudio = randomItem.name.toLowerCase().endsWith('.mp3');
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF27293D),
+        title: const Row(
+          children: [
+            Icon(Icons.card_giftcard, color: Color(0xFFFF6B4A)),
+            SizedBox(width: 8),
+            Text('روزیِ امروز شما', style: TextStyle(fontSize: 16)),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'امروز این تحفه‌ی فکری و معنوی برای شما انتخاب شده است:',
+              style: TextStyle(fontSize: 13, color: Colors.white70),
+            ),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: const Color(0xFF1E1E2E),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: const Color(0xFFFF6B4A).withOpacity(0.5)),
+              ),
+              child: Row(
+                children: [
+                  Icon(isAudio ? Icons.headphones : Icons.menu_book, color: const Color(0xFFFF6B4A)),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      randomItem.name,
+                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('بعداً', style: TextStyle(color: Colors.white60)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFFF6B4A)),
+            onPressed: () {
+              Navigator.pop(ctx);
+              _downloadAndOpen(randomItem);
+            },
+            child: const Text('مشاهده و مطالعه', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // مورد ۴: نشان اعلان (شیپور)
+  void _showNotificationNotice() {
+    showDialog(
+        ),
+        content: const SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('• زبانه متون و سخنرانی:', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFFFF6B4A))),
+              Text('می‌توانید کتب و صوت‌های سخنرانی‌ها را با کلیک دریافت کنید. فایل‌های مطالعه‌شده با تیک سبز متمایز می‌شوند.', style: TextStyle(fontSize: 12.5)),
+              SizedBox(height: 10),
+              Text('• دکمه "روزیِ من":', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFFFF6B4A))),
+              Text('در هر ورود یا مطالعه روزانه، یک محتوا به صورت تصادفی به عنوان هدیه روز برای شما به نمایش در می‌آید.', style: TextStyle(fontSize: 12.5)),
+              SizedBox(height: 10),
+              Text('• تست MBTI:', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFFFF6B4A))),
+              Text('با پاسخ به ۳۲ سوال، سنخ شخصیتی خود را شناسایی نمایید.', style: TextStyle(fontSize: 12.5)),
+              SizedBox(height: 10),
+              Text('• بخش محصولات:', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFFFF6B4A))),
+              Text('سایر برنامه‌ها نظیر بازی جورچین و نرم‌افزارهای آموزشی از این بخش قابل بارگیری و نصب است.', style: TextStyle(fontSize: 12.5)),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('بستن', style: TextStyle(color: Color(0xFFFF6B4A))),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // مورد ۶: منوی سه نقطه به صورت Bottom Sheet
+  void _showCustomBottomSheetMenu() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF27293D),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => Padding(
+        padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
+        child: Column(
+          mainAxisSize: MainAxisSize.min10),
+              Text('• تست MBTI:', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFFFF6B4A))),
+              Text('با پاسخ به ۳۲ سوال، سنخ شخصیتی خود را شناسایی نمایید.', style: TextStyle(fontSize: 12.5)),
+              SizedBox(height: 10),
+              Text('• بخش محصولات:', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFFFF6B4A))),
+              Text('سایر برنامه‌ها نظیر بازی جورچین و نرم‌افزارهای آموزشی از این بخش قابل بارگیری و نصب است.', style: TextStyle(fontSize: 12.5)),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('بستن', style: TextStyle(color: Color(0xFFFF6B4A))),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // مورد ۶: منوی سه نقطه به صورت Bottom Sheet
+  void _showCustomBottomSheetMenu() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF27293D),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => Padding(
+        padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.info_outline, color: Color(0xFFFF6B4A)),
+              title: const Text('درباره ما'),
+              onTap: () {
+                Navigator.pop(ctx);
+                _showAboutDialog();
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.language, color: Color(0xFF38BDF8)),
+              title: const Text('وبسایت رسمی (shiravi.org)'),
+              onTap: () {
+                Navigator.pop(ctx);
+                _launchExternal('http://shiravi.org');
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.send, color: Colors.greenAccent),
+              title: const Text('کانال ایتا'),
+              onTap: () {
+                Navigator.pop(ctx);
+                _launchExternal('https://eitaa. [
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFFF6B4A)),
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('بستن', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // مورد ۷: تایید خروج با کلیک روی Back گوشی
+  Future<bool> _onWillPop() async {
+    final bool? exitApp = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF27293D),
+        title: const Text('تأیید خروج'),
+        content: const Text('آیا مایل به بستن برنامه هستید؟'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('خیر', style: TextStyle(color: Colors.white60)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFFF6B4A)),
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('بله', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+    return exitApp ?? false;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return WillPopScope(
+      onWillPop: _onWillPop,
+      child: Scaffold(
+        appBar: AppBar(
+          title: _isSearching
+              ? TextField(
+                  controller: _searchController,
+                  autofocus: true,
+                  style: const TextStyle(color: Colors.white),
+                  decoration: const InputDecoration(
+                    hintText: 'جستجو در عناوین...',
+                    hintStyle: TextStyle(color: Colors.white54),
+                    border: InputBorder.none,
+                  ),
+                  onChanged: (val) => setState(() => _searchQuery = val.trim().toLowerCase()),
+                )
+              : const Text('شب‌های دانشجویی'),
+          actions: [
+            IconButton(
+              icon: Icon(_isSearching ? Icons.close : Icons.search),
+              onPressed: () {
+                setState(() {
+                  _isSearching = !_isSearching;
+                  _searchQuery = '';
+                  _searchController.clear();
+                });
+              },
+            ),
+            IconButton(
+              icon: const Icon(Icons.campaign_outlined), // نشان اعلان (شیپور)
+              tooltip: 'اعلانات',
+              onPressed: _showNotificationNotice,
+            ),
+            IconButton(
+              icon: const Icon(Icons.help_outline), // راهنما
+              tooltip: 'راهنما',
+              onPressed: _showHelpDialog,
+            ),
+            IconButton(
+              icon: const Icon(Icons.more_vert),
+              tooltip: 'بیشتر',
+              onPressed: _showCustomBottomSheetMenu,
+            ),
+          ],
+        ),
+        body: Column(
+          children: [
+            const QuoteMarquee(), // مورد ۹: نوار پیمایش افقی جملات
+            Expanded(
+              child: _isLoading
+                  ? const Center(child: CircularProgressIndicator(color: Color(0xFFFF6B4A)))
+                  : _errorMessage.isNotEmpty
+                      ? Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Text(_errorMessage, style: const TextStyle(color: Colors.white70)),
+                              const SizedBox(height: 12),
+                              ElevatedButton(
+                                style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFFF6B4A)),
+                                onPressed: _fetchAllData,
+                                child: const Text('تلاش مجدد', style: TextStyle(color: Colors.white)),
+                              ),
+                            ],
+                          ),
+                        )
+                      : _buildTabBody(),
+            ),
+          ],
+        ),
+        floatingActionButton: FloatingActionButton.extended(
+          backgroundColor: const Color(0xFFFF6B4A),
+          onPressed: _openDailyBlessing,
+          icon: const Icon(Icons.auto_awesome, color: Colors.white),
+          label: const Text('روزیِ من', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        ),
+        bottomNavigationBar: BottomNavigationBar(
+          currentIndex: _selectedIndex,
+          backgroundColor: const Color(0xFF27293D),
+          selectedItemColor: const Color(0xFFFF6B4A),
+          unselectedItemColor: Colors.white54,
+          type: BottomNavigationBarType.fixed,
+          onTap: (index) => setState(() => _selectedIndex = index),
+          items: const [
+            BottomNavigationBarItem(icon: Icon(Icons.menu_book), label: 'متون'),
+            BottomNavigationBarItem(icon: Icon(Icons.headphones), label: 'سخنرانی‌ها'),
+            BottomNavigationBarItem(icon: Icon(Icons.psychology), label: 'تست شخصیت'),
+            BottomNavigationBarItem(icon: Icon(Icons.apps), label: 'سایر محصولات'),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTabBody() {
+    switch (_selectedIndex) {
+      case 0:
+        return _buildItemList(_texts, false);
+      case 1:
+        return _buildItemList(_lectures, false);
+      case 2:
+        return const MbtiQuizScreen();
+      case 3:
+        return _buildItemList(_otherProducts, true);
+      default:
+        return const SizedBox();
+    }
+  }
+
+  Widget _buildItemList(List<DriveItem> items, bool isProductTab) {
+    final filtered = items.where((it) => it.name.toLowerCase().contains(_searchQuery)).toList();
+
+    if (filtered.isEmpty) {
+      return const Center(child: Text('محتوایی یافت نشد.', style: TextStyle(color: Colors.white54)));
+    }
+
+    return RefreshIndicator(
+      color: const Color(0xFFFF6B4A),
+      onRefresh: _fetchAllData,
+      child: ListView.builder(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        itemCount: filtered.length,
+        itemBuilder: (context, index) {
+          final item = filtered[index];
+          final bool isRead = _readItemIds.contains(item.id);
+          final bool isAudio = item.name.toLowerCase().endsWith('.mp3');
+
+          Widget leadingIcon;
+          if (isProductTab) {
+            leadingIcon = const Icon(Icons.android, color: Colors.greenAccent);
+          } else if (isRead) {
+            leadingIcon = const Icon(Icons.check_circle, color: Colors.green);
+          } else {
+            leadingIcon = Icon(isAudio ? Icons.audiotrack : Icons.picture_as_pdf, color: const Color(0xFFFF6B4A));
+          }
+
+          return Card(
+            color: const Color(0xFF27293D),
+            margin: const EdgeInsets.symmetric(vertical: 4),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+              side: isRead ? const BorderSide(color: Colors.green, width: 0.5) : BorderSide.none,
+            ),
+            child: ListTile(
+              leading: leadingIcon,
+              title: Text(
+                item.name,
+                style: TextStyle(
+                  fontSize: 13.5,
+                  fontWeight: isRead ? FontWeight.normal : FontWeight.bold,
+                  color: isRead ? Colors.white70 : Colors.white,
+                ),
+              ),
+              subtitle: isProductTab
+                  ? const Text('جهت بارگیری و نصب لمس کنید', style: TextStyle(fontSize: 11, color: Colors.white54))
+                  : null,
+              trailing: const Icon(Icons.arrow_forward_ios, size: 14, color: Colors.white38),
+              onTap: () => _downloadAndOpen(item, isApk: isProductTab),
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
+// ==========================================
+// صفحه پخش صوت (Audio Player)
+// ==========================================
 class AudioPlayerScreen extends StatefulWidget {
-  final File file;
+  final String filePath;
   final String title;
 
-  const AudioPlayerScreen({super.key, required this.file, required this.title});
+  const AudioPlayerScreen({super.key, required this.filePath, required this.title});
 
   @override
   State<AudioPlayerScreen> createState() => _AudioPlayerScreenState();
 }
 
 class _AudioPlayerScreenState extends State<AudioPlayerScreen> {
-  late AudioPlayer _player;
-  bool _isPlaying = false;
+  late final AudioPlayer _player;
   Duration _duration = Duration.zero;
   Duration _position = Duration.zero;
+  bool _isPlaying = false;
 
   @override
   void initState() {
     super.initState();
     _player = AudioPlayer();
 
+    _player.onDurationChanged.listen((d) => setState(() => _duration = d));
+    _player.onPositionChanged.listen((p) => setState(() => _position = p));
     _player.onPlayerStateChanged.listen((state) {
-      if (mounted) {
-        setState(() {
-          _isPlaying = state == PlayerState.playing;
-        });
-      }
+      setState(() => _isPlaying = state == PlayerState.playing);
     });
 
-    _player.onDurationChanged.listen((newDuration) {
-      if (mounted) {
-        setState(() {
-          _duration = newDuration;
-        });
-      }
-    });
-
-    _player.onPositionChanged.listen((newPosition) {
-      if (mounted) {
-        setState(() {
-          _position = newPosition;
-        });
-      }
-    });
-
-    _player.play(DeviceFileSource(widget.file.path));
+    _player.play(DeviceFileSource(widget.filePath));
   }
 
   @override
   void dispose() {
+    _player.stop();
     _player.dispose();
     super.dispose();
   }
 
-  String _formatDuration(Duration duration) {
+  String _formatDuration(Duration d) {
     String twoDigits(int n) => n.toString().padLeft(2, '0');
-    final hours = twoDigits(duration.inHours);
-    final minutes = twoDigits(duration.inMinutes.remainder(60));
-    final seconds = twoDigits(duration.inSeconds.remainder(60));
-    return duration.inHours > 0 ? '$hours:$minutes:$seconds' : '$minutes:$seconds';
+    final minutes = twoDigits(d.inMinutes.remainder(60));
+    final seconds = twoDigits(d.inSeconds.remainder(60));
+    return d.inHours > 0 ? '${twoDigits(d.inHours)}:$minutes:$seconds' : '$minutes:$seconds';
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('پخش سخنرانی', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-        centerTitle: true,
-      ),
+      appBar: AppBar(title: const Text('پخش سخنرانی')),
       body: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+        padding: const EdgeInsets.all(24.0),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Container(
-              width: 190,
-              height: 190,
+              width: 170,
+              height: 170,
               decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [Color(0xFFFF6B4A), Color(0xFFFF9E7A)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                borderRadius: BorderRadius.circular(30),
+                shape: BoxShape.circle,
+                gradient: const RadialGradient(colors: [Color(0xFFFF6B4A), Color(0xFF27293D)]),
                 boxShadow: [
-                  BoxShadow(
-                    color: const Color(0xFFFF6B4A).withOpacity(0.35),
-                    blurRadius: 25,
-                    offset: const Offset(0, 10),
-                  ),
+                  BoxShadow(color: const Color(0xFFFF6B4A).withOpacity(0.3), blurRadius: 20, spreadRadius: 5),
                 ],
               ),
-              child: const Icon(Icons.graphic_eq_rounded, size: 90, color: Colors.white),
+              child: const Icon(Icons.headphones, size: 75, color: Colors.white),
             ),
-            const SizedBox(height: 36),
+            const SizedBox(height: 30),
             Text(
               widget.title,
               textAlign: TextAlign.center,
-              style: const TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.bold, height: 1.4),
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 30),
-            SliderTheme(
-              data: SliderTheme.of(context).copyWith(
-                thumbColor: const Color(0xFFFF6B4A),
-                activeTrackColor: const Color(0xFFFF6B4A),
-                inactiveTrackColor: Colors.white12,
-                thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 7),
-              ),
-              child: Slider(
-                min: 0,
-                max: _duration.inSeconds.toDouble() > 0 ? _duration.inSeconds.toDouble() : 1.0,
-                value: _position.inSeconds.toDouble().clamp(0.0, _duration.inSeconds.toDouble() > 0 ? _duration.inSeconds.toDouble() : 1.0),
-                onChanged: (value) async {
-                  await _player.seek(Duration(seconds: value.toInt()));
-                },
-              ),
+            Slider(
+              min: 0,
+              max: _duration.inSeconds.toDouble() > 0 ? _duration.inSeconds.toDouble() : 1.0,
+              value: _position.inSeconds.toDouble().clamp(0.0, _duration.inSeconds.toDouble() > 0 ? _duration.inSeconds.toDouble() : 1.0),
+              activeColor: const Color(0xFFFF6B4A),
+              onChanged: (val) => _player.seek(Duration(seconds: val.toInt())),
             ),
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
+              padding: const EdgeInsets.symmetric(horizontal: 16.0),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(_formatDuration(_position), style: const TextStyle(color: Colors.white54, fontSize: 12)),
-                  Text(_formatDuration(_duration), style: const TextStyle(color: Colors.white54, fontSize: 12)),
+                  Text(_formatDuration(_position), style: const TextStyle(fontSize: 12, color: Colors.white70)),
+                  Text(_formatDuration(_duration), style: const TextStyle(fontSize: 12, color: Colors.white70)),
                 ],
               ),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 20),
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 IconButton(
-                  iconSize: 34,
-                  color: Colors.white70,
-                  icon: const Icon(Icons.replay_10_rounded),
-                  onPressed: () {
-                    final target = _position - const Duration(seconds: 10);
-                    _player.seek(target < Duration.zero ? Duration.zero : target);
-                  },
-                ),
-                const SizedBox(width: 16),
-                CircleAvatar(
-                  radius: 36,
-                  backgroundColor: const Color(0xFFFF6B4A),
-                  child: IconButton(
-                    iconSize: 42,
-                    color: Colors.white,
-                    icon: Icon(_isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded),
-                    onPressed: () async {
-                      if (_isPlaying) {
-                        await _player.pause();
-                      } else {
-                        await _player.resume();
-                      }
-                    },
-                  ),
+                  iconSize: 36,
+                  icon: const Icon(Icons.replay_10),
+                  onPressed: () => _player.seek(_position - const Duration(seconds: 10)),
                 ),
                 const SizedBox(width: 16),
                 IconButton(
-                  iconSize: 34,
-                  color: Colors.white70,
-                  icon: const Icon(Icons.forward_10_rounded),
-                  onPressed: () {
-                    final target = _position + const Duration(seconds: 10);
-                    _player.seek(target > _duration ? _duration : target);
-                  },
+                  iconSize: 64,
+                  color: const Color(0xFFFF6B4A),
+                  icon: Icon(_isPlaying ? Icons.pause_circle_filled : Icons.play_circle_filled),
+                  onPressed: () => _isPlaying ? _player.pause() : _player.resume(),
+                ),
+                const SizedBox(width: 16),
+                IconButton(
+                  iconSize: 36,
+                  icon: const Icon(Icons.forward_10),
+                  onPressed: () => _player.seek(_position + const Duration(seconds: 10)),
                 ),
               ],
             ),
@@ -342,517 +1101,38 @@ class _AudioPlayerScreenState extends State<AudioPlayerScreen> {
   }
 }
 
-class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+// ==========================================
+// صفحه نمایش PDF
+// ==========================================
+class PdfViewerScreen extends StatelessWidget {
+  final String filePath;
+  final String title;
 
-  @override
-  State<HomeScreen> createState() => _HomeScreenState();
-}
-
-class _HomeScreenState extends State<HomeScreen> {
-  int _selectedIndex = 0;
-  String _searchQuery = '';
-  final TextEditingController _searchController = TextEditingController();
-  bool _isSearching = false;
-
-  List<DriveItem> _texts = [];
-  List<DriveItem> _lectures = [];
-  bool _isLoading = true;
-  String? _errorMessage;
-
-  @override
-  void initState() {
-    super.initState();
-    _fetchDriveFiles();
-  }
-
-  Future<void> _fetchDriveFiles() async {
-    setState(() {
-      _isLoading = true;
-      _errorMessage = null;
-    });
-
-    try {
-      final textsUri = Uri.parse(scriptApiUrl).replace(queryParameters: {'folderId': ketabFolderId});
-      final lecturesUri = Uri.parse(scriptApiUrl).replace(queryParameters: {'folderId': maghalehFolderId});
-
-      final textsRes = await http.get(textsUri);
-      final lecturesRes = await http.get(lecturesUri);
-
-      if (textsRes.statusCode == 200 && lecturesRes.statusCode == 200) {
-        final List<dynamic> textsJson = json.decode(textsRes.body);
-        final List<dynamic> lecturesJson = json.decode(lecturesRes.body);
-
-        setState(() {
-          _texts = textsJson.map((e) => DriveItem.fromJson(e)).toList();
-          _lectures = lecturesJson.map((e) => DriveItem.fromJson(e)).toList();
-          _isLoading = false;
-        });
-      } else {
-        setState(() {
-          _errorMessage = 'خطا در ارتباط با سرور ابری (کد: ${textsRes.statusCode})';
-          _isLoading = false;
-        });
-      }
-    } catch (e) {
-      setState(() {
-        _errorMessage = 'خطای اتصال به اینترنت';
-        _isLoading = false;
-      });
-    }
-  }
-
-  Future<void> _downloadAndOpen(DriveItem doc, {required bool isAudio}) async {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF2B2B3D),
-        content: Row(
-          children: [
-            const CircularProgressIndicator(color: Color(0xFFFF6B4A)),
-            const SizedBox(width: 20),
-            Expanded(
-              child: Text(
-                isAudio ? 'در حال دریافت فایل سخنرانی...' : 'در حال دریافت متن...',
-                style: const TextStyle(color: Colors.white, fontSize: 13),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-
-    final String downloadUrl = 'https://drive.google.com/uc?export=download&id=${doc.id}';
-
-    try {
-      final response = await http.get(Uri.parse(downloadUrl));
-      if (mounted) Navigator.of(context, rootNavigator: true).pop();
-
-      if (response.statusCode == 200) {
-        final dir = await getTemporaryDirectory();
-        final ext = isAudio ? 'mp3' : 'pdf';
-        final file = File('${dir.path}/${doc.id}.$ext');
-        await file.writeAsBytes(response.bodyBytes, flush: true);
-
-        if (!mounted) return;
-        if (isAudio) {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => AudioPlayerScreen(file: file, title: doc.name)),
-          );
-        } else {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => PdfViewerScreen(file: file, title: doc.name)),
-          );
-        }
-      } else {
-        await _launchExternal(downloadUrl);
-      }
-    } catch (_) {
-      if (mounted) Navigator.of(context, rootNavigator: true).pop();
-      await _launchExternal(downloadUrl);
-    }
-  }
-
-  Future<void> _launchExternal(String url) async {
-    final Uri? uri = Uri.tryParse(url);
-    if (uri != null) {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
-    }
-  }
-
-  void _showAboutUsDialog() {
-    showDialog(
-      context: context,
-      builder: (ctx) => Dialog(
-        backgroundColor: const Color(0xFF262638),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        child: Container(
-          padding: const EdgeInsets.all(20),
-          constraints: const BoxConstraints(maxHeight: 600),
-          child: Column(
-            children: [
-              const Row(
-                children: [
-                  Icon(Icons.info_outline, color: Color(0xFFFF6B4A)),
-                  SizedBox(width: 8),
-                  Text(
-                    'درباره ما',
-                    style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
-                  ),
-                ],
-              ),
-              const Divider(color: Colors.white12, height: 24),
-              const Expanded(
-                child: SingleChildScrollView(
-                  child: Text(
-                    'شب‌های دانشجویی؛ تلاقیِ اندیشه، معرفت و پویایی\n\n'
-                    'در دنیای پرشتاب امروز، «شب‌های دانشجویی» بستری است برای بازخوانیِ اندیشمندانه و دقیقِ آموزه‌ها و معارف در پیوند با اقتضائات زیست دانشجویی و جامعه امروز.\n\n'
-                    'این برنامه بر آن است تا با تکیه بر متون غنی‌سازی شده، سخنرانی‌های صوتی و خودارزیابی‌های علمی، محیطی انگیزه‌بخش و آگاهی‌افزا را برای همه پویندگان دانش رقم بزند.\n\n'
-                    'با احترام،\nتیمِ توسعه و پژوهشِ شب‌های دانشجویی',
-                    style: TextStyle(color: Colors.white70, fontSize: 13.5, height: 1.8),
-                    textAlign: TextAlign.justify,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFFF6B4A),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                  ),
-                  onPressed: () => Navigator.of(ctx).pop(),
-                  child: const Text('بستن', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  void _showFeedbackDialog() {
-    final TextEditingController feedbackController = TextEditingController();
-
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF262638),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text(
-          'ارسال نظر و انتقاد',
-          style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
-        ),
-        content: TextField(
-          controller: feedbackController,
-          maxLines: 5,
-          style: const TextStyle(color: Colors.white),
-          decoration: const InputDecoration(
-            hintText: 'متن نظر یا پیشنهاد خود را بنویسید...',
-            hintStyle: TextStyle(color: Colors.white38),
-            enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: Colors.white24)),
-            focusedBorder: OutlineInputBorder(borderSide: BorderSide(color: Color(0xFFFF6B4A))),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('انصراف', style: TextStyle(color: Colors.white54)),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFFF6B4A)),
-            onPressed: () async {
-              final String text = feedbackController.text.trim();
-              if (text.isNotEmpty) {
-                final Uri emailLaunchUri = Uri(
-                  scheme: 'mailto',
-                  path: 'm_khozani@yahoo.com',
-                  query: 'subject=${Uri.encodeComponent('نظر کاربر اپلیکیشن شب‌های دانشجویی')}&body=${Uri.encodeComponent(text)}',
-                );
-                Navigator.pop(ctx);
-                await launchUrl(emailLaunchUri);
-              }
-            },
-            child: const Text('ارسال', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showContactUsModal() {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: const Color(0xFF2B2B3D),
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (ctx) => Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text(
-              'ارتباط با ما',
-              style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 20),
-            ListTile(
-              leading: const Icon(Icons.language, color: Color(0xFFFF6B4A), size: 28),
-              title: const Text('پایگاه اینترنتی رسمی', style: TextStyle(color: Colors.white)),
-              subtitle: const Text('www.shiravi.org', style: TextStyle(color: Colors.white70)),
-              onTap: () {
-                Navigator.pop(ctx);
-                _launchExternal('https://www.shiravi.org');
-              },
-            ),
-            const Divider(color: Colors.white12),
-            ListTile(
-              leading: const Icon(Icons.send_rounded, color: Color(0xFFFF6B4A), size: 28),
-              title: const Text('کانال رسمی در پیام‌رسان ایتا', style: TextStyle(color: Colors.white)),
-              subtitle: const Text('@shiravi_ir', style: TextStyle(color: Colors.white70)),
-              onTap: () {
-                Navigator.pop(ctx);
-                _launchExternal('https://eitaa.com/shiravi_ir');
-              },
-            ),
-            const Divider(color: Colors.white12),
-            ListTile(
-              leading: const Icon(Icons.psychology_alt_rounded, color: Color(0xFFFF6B4A), size: 28),
-              title: const Text('پاسخ به پرسش‌های سخت', style: TextStyle(color: Colors.white)),
-              subtitle: const Text('گروه پرسش و پاسخ در پیام‌رسان بله', style: TextStyle(color: Colors.white70)),
-              onTap: () {
-                Navigator.pop(ctx);
-                _launchExternal('https://ble.ir/join/NGMyZGI5OT');
-              },
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  String _getAppBarTitle() {
-    if (_selectedIndex == 0) return 'متون در شب‌های دانشجویی';
-    if (_selectedIndex == 1) return 'سخنرانی‌های صوتی';
-    return 'تست خودارزیابی MBTI';
-  }
+  const PdfViewerScreen({super.key, required this.filePath, required this.title});
 
   @override
   Widget build(BuildContext context) {
-    final currentList = _selectedIndex == 0 ? _texts : _lectures;
-    final isAudioTab = _selectedIndex == 1;
-
-    final filteredList = currentList.where((doc) {
-      return doc.name.toLowerCase().contains(_searchQuery.toLowerCase());
-    }).toList();
-
     return Scaffold(
-      appBar: AppBar(
-        title: (_isSearching && _selectedIndex != 2)
-            ? TextField(
-                controller: _searchController,
-                autofocus: true,
-                style: const TextStyle(color: Colors.white),
-                decoration: const InputDecoration(
-                  hintText: 'جستجو در عناوین...',
-                  hintStyle: TextStyle(color: Colors.white54),
-                  border: InputBorder.none,
-                ),
-                onChanged: (val) {
-                  setState(() {
-                    _searchQuery = val.trim();
-                  });
-                },
-              )
-            : Text(
-                _getAppBarTitle(),
-                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18),
-              ),
-        centerTitle: true,
-        actions: [
-          if (_selectedIndex != 2)
-            IconButton(
-              icon: Icon(_isSearching ? Icons.close : Icons.search, color: Colors.white),
-              onPressed: () {
-                setState(() {
-                  if (_isSearching) {
-                    _isSearching = false;
-                    _searchQuery = '';
-                    _searchController.clear();
-                  } else {
-                    _isSearching = true;
-                  }
-                });
-              },
-            ),
-          PopupMenuButton<String>(
-            icon: const Icon(Icons.more_vert, color: Colors.white),
-            color: const Color(0xFF262638),
-            onSelected: (val) {
-              if (val == 'about') _showAboutUsDialog();
-              if (val == 'contact') _showContactUsModal();
-              if (val == 'feedback') _showFeedbackDialog();
-            },
-            itemBuilder: (ctx) => const [
-              PopupMenuItem(
-                value: 'about',
-                child: Row(
-                  children: [
-                    Icon(Icons.info_outline, color: Color(0xFFFF6B4A), size: 20),
-                    SizedBox(width: 10),
-                    Text('درباره ما', style: TextStyle(color: Colors.white)),
-                  ],
-                ),
-              ),
-              PopupMenuItem(
-                value: 'contact',
-                child: Row(
-                  children: [
-                    Icon(Icons.contact_support_outlined, color: Color(0xFFFF6B4A), size: 20),
-                    SizedBox(width: 10),
-                    Text('ارتباط با ما', style: TextStyle(color: Colors.white)),
-                  ],
-                ),
-              ),
-              PopupMenuItem(
-                value: 'feedback',
-                child: Row(
-                  children: [
-                    Icon(Icons.rate_review_outlined, color: Color(0xFFFF6B4A), size: 20),
-                    SizedBox(width: 10),
-                    Text('ارسال نظر و انتقاد', style: TextStyle(color: Colors.white)),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-      body: _selectedIndex == 2
-          ? const MbtiQuizScreen()
-          : _isLoading
-              ? const Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      CircularProgressIndicator(color: Color(0xFFFF6B4A)),
-                      SizedBox(height: 16),
-                      Text('در حال دریافت اطلاعات از فضای ابری...',
-                          style: TextStyle(color: Colors.white70, fontSize: 14)),
-                    ],
-                  ),
-                )
-              : _errorMessage != null
-                  ? Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const Icon(Icons.cloud_off_rounded, color: Colors.white38, size: 64),
-                          const SizedBox(height: 16),
-                          Text(_errorMessage!, style: const TextStyle(color: Colors.white70)),
-                          const SizedBox(height: 12),
-                          ElevatedButton.icon(
-                            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFFF6B4A)),
-                            onPressed: _fetchDriveFiles,
-                            icon: const Icon(Icons.refresh, color: Colors.white),
-                            label: const Text('تلاش مجدد', style: TextStyle(color: Colors.white)),
-                          ),
-                        ],
-                      ),
-                    )
-                  : RefreshIndicator(
-                      color: const Color(0xFFFF6B4A),
-                      backgroundColor: const Color(0xFF262638),
-                      onRefresh: _fetchDriveFiles,
-                      child: filteredList.isEmpty
-                          ? const Center(
-                              child: Text('موردی یافت نشد.',
-                                  style: TextStyle(color: Colors.white54, fontSize: 16)),
-                            )
-                          : ListView.builder(
-                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                              itemCount: filteredList.length,
-                              itemBuilder: (context, index) {
-                                final doc = filteredList[index];
-                                return Card(
-                                  color: const Color(0xFF262638),
-                                  margin: const EdgeInsets.only(bottom: 10),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  child: ListTile(
-                                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-                                    leading: Container(
-                                      padding: const EdgeInsets.all(8),
-                                      decoration: BoxDecoration(
-                                        color: const Color(0xFFFF6B4A).withOpacity(0.15),
-                                        borderRadius: BorderRadius.circular(8),
-                                      ),
-                                      child: Icon(
-                                        isAudioTab ? Icons.audiotrack_rounded : Icons.description_rounded,
-                                        color: const Color(0xFFFF6B4A),
-                                        size: 26,
-                                      ),
-                                    ),
-                                    title: Text(
-                                      doc.name,
-                                      style: const TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 14.5,
-                                        fontWeight: FontWeight.w600,
-                                        height: 1.4,
-                                      ),
-                                    ),
-                                    trailing: Icon(
-                                      isAudioTab ? Icons.play_circle_fill_rounded : Icons.chrome_reader_mode_outlined,
-                                      color: const Color(0xFFFFB300),
-                                      size: 28,
-                                    ),
-                                    onTap: () => _downloadAndOpen(doc, isAudio: isAudioTab),
-                                  ),
-                                );
-                              },
-                            ),
-                    ),
-      bottomNavigationBar: Container(
-        decoration: const BoxDecoration(
-          border: Border(top: BorderSide(color: Colors.white10, width: 0.5)),
-        ),
-        child: BottomNavigationBar(
-          currentIndex: _selectedIndex,
-          onTap: (index) {
-            setState(() {
-              _selectedIndex = index;
-              _searchQuery = '';
-              _isSearching = false;
-              _searchController.clear();
-            });
-          },
-          backgroundColor: const Color(0xFF181825),
-          selectedItemColor: const Color(0xFFFF6B4A),
-          unselectedItemColor: Colors.white54,
-          selectedLabelStyle: const TextStyle(fontWeight: FontWeight.bold),
-          items: const [
-            BottomNavigationBarItem(
-              icon: Icon(Icons.description_rounded),
-              label: 'متون',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.headphones_rounded),
-              label: 'سخنرانی',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.psychology_rounded),
-              label: 'تست خودارزیابی',
-            ),
-          ],
-        ),
-      ),
+      appBar: AppBar(title: Text(title, style: const TextStyle(fontSize: 15))),
+      body: SfPdfViewer.file(File(filePath)),
     );
   }
 }
 
 // ==========================================
-// صفحه و منطق تست شخصیت‌شناسی MBTI
+// بخش تست MBTI (کامل ۳۲ سواله و آفلاین)
 // ==========================================
-
 class MbtiQuestion {
   final String title;
-  final String optA;
-  final String optB;
+  final String optionA;
+  final String optionB;
   final String typeA;
   final String typeB;
 
-  const MbtiQuestion({
+  MbtiQuestion({
     required this.title,
-    required this.optA,
-    required this.optB,
+    required this.optionA,
+    required this.optionB,
     required this.typeA,
     required this.typeB,
   });
@@ -867,370 +1147,198 @@ class MbtiQuizScreen extends StatefulWidget {
 
 class _MbtiQuizScreenState extends State<MbtiQuizScreen> {
   final Map<int, String> _answers = {};
-  bool _showResult = false;
-  String _calculatedType = '';
+  String? _finalResult;
 
-  static const List<MbtiQuestion> questions = [
-    // بخش اول: E یا I
-    MbtiQuestion(title: 'بخش اول: برون‌گرایی (E) یا درون‌گرایی (I) - سوال ۱', optA: 'بعد از یک مهمانی شلوغ، احساس سرزندگی می‌کنم', optB: 'بعد از یک مهمانی شلوغ، احساس خستگی می‌کنم', typeA: 'E', typeB: 'I'),
-    MbtiQuestion(title: 'بخش اول: برون‌گرایی (E) یا درون‌گرایی (I) - سوال ۲', optA: 'ترجیح می‌دهم در گروه فکر کنم و حرف بزنم', optB: 'ترجیح می‌دهم اول تنها فکر کنم، بعد بگویم', typeA: 'E', typeB: 'I'),
-    MbtiQuestion(title: 'بخش اول: برون‌گرایی (E) یا درون‌گرایی (I) - سوال ۳', optA: 'دوستان زیادی دارم و راحت آشنا می‌شوم', optB: 'دوستان کمی دارم اما روابطم عمیق است', typeA: 'E', typeB: 'I'),
-    MbtiQuestion(title: 'بخش اول: برون‌گرایی (E) یا درون‌گرایی (I) - سوال ۴', optA: 'سکوت در جمع برایم ناراحت‌کننده است', optB: 'سکوت در جمع برایم طبیعی و راحت است', typeA: 'E', typeB: 'I'),
-    MbtiQuestion(title: 'بخش اول: برون‌گرایی (E) یا درون‌گرایی (I) - سوال ۵', optA: 'وقتی تنها هستم، دنبال کاری برای انجام دادن می‌گردم', optB: 'وقتی تنها هستم، از آن لذت می‌برم', typeA: 'E', typeB: 'I'),
-    MbtiQuestion(title: 'بخش اول: برون‌گرایی (E) یا درون‌گرایی (I) - سوال ۶', optA: 'در جمع انرژی می‌گیرم', optB: 'در خلوت انرژی می‌گیرم', typeA: 'E', typeB: 'I'),
-    MbtiQuestion(title: 'بخش اول: برون‌گرایی (E) یا درون‌گرایی (I) - سوال ۷', optA: 'ترجیح می‌دهم با تلفن صحبت کنم', optB: 'ترجیح می‌دهم پیام بدهم', typeA: 'E', typeB: 'I'),
-    MbtiQuestion(title: 'بخش اول: برون‌گرایی (E) یا درون‌گرایی (I) - سوال ۸', optA: 'اغلب قبل از فکر کردن حرف می‌زنم', optB: 'اغلب قبل از حرف زدن فکر می‌کنم', typeA: 'E', typeB: 'I'),
+  final List<MbtiQuestion> _questions = [
+    // بخش E vs I
+    MbtiQuestion(title: "در جمع‌های شلوغ معمولاً:", optionA: "انرژی بیشتری می‌گیرم و سرزنده می‌شوم.", optionB: "انرژی‌ام تحلیل می‌رود و نیاز به خلوت دارم.", typeA: "E", typeB: "I"),
+    MbtiQuestion(title: "برای حل مسائل فکری ترجیح می‌دهید:", optionA: "با دیگران همفکری و گفتگو کنم.", optionB: "ابتدا در تنهایی خودم به آن فکر کنم.", typeA: "E", typeB: "I"),
+    MbtiQuestion(title: "در یک محیط تازه:", optionA: "سریعاً با دیگران ارتباط برقرار می‌کنم.", optionB: "کمی صبر می‌کنم تا بقیه جلو بیایند.", typeA: "E", typeB: "I"),
+    MbtiQuestion(title: "بعد از یک هفته کاری سنگین:", optionA: "رفتن به دورهمی خستگی‌ام را در می‌آورد.", optionB: "ماندن در خانه و مطالعه/استراحت آرامم می‌کند.", typeA: "E", typeB: "I"),
+    MbtiQuestion(title: "معمولاً:", optionA: "ابتدا حرف می‌زنم و سپس عمیقاً فکر می‌کنم.", optionB: "ابتدا در ذهن می‌سنجم و بعد سخن می‌گویم.", typeA: "E", typeB: "I"),
+    MbtiQuestion(title: "دایره ارتباطات شما:", optionA: "گسترده و شامل افراد گوناگون است.", optionB: "محدود به چند دوست بسیار نزدیک و عمیق است.", typeA: "E", typeB: "I"),
+    MbtiQuestion(title: "در اوقات فراغت:", optionA: "فعالیت گروهی را ترجیح می‌دهم.", optionB: "فعالیت فردی و تمرکز درونی را می‌پسندم.", typeA: "E", typeB: "I"),
+    MbtiQuestion(title: "دیگران معمولاً شما را فردی:", optionA: "پرانرژی و برون‌ریز می‌دانند.", optionB: "آرام، تودار و متفکر توصیف می‌کنند.", typeA: "E", typeB: "I"),
 
-    // بخش دوم: S یا N
-    MbtiQuestion(title: 'بخش دوم: حسی (S) یا شهودی (N) - سوال ۱', optA: 'به جزئیات و واقعیت‌های ملموس توجه می‌کنم', optB: 'به الگوها و معناهای پنهان توجه می‌کنم', typeA: 'S', typeB: 'N'),
-    MbtiQuestion(title: 'بخش دوم: حسی (S) یا شهودی (N) - سوال ۲', optA: 'ترجیح می‌دهم دستورالعمل گام‌به‌گام داشته باشم', optB: 'ترجیح می‌دهم کلیت کار را بفهمم و خودم جزئیات را پر کنم', typeA: 'S', typeB: 'N'),
-    MbtiQuestion(title: 'بخش دوم: حسی (S) یا شهودی (N) - سوال ۳', optA: 'به تجربه‌ی عملی بیشتر از نظریه اعتماد دارم', optB: 'ایده‌های جدید و نظریه‌ها برایم جذاب‌اند', typeA: 'S', typeB: 'N'),
-    MbtiQuestion(title: 'بخش دوم: حسی (S) یا شهودی (N) - سوال ۴', optA: '«واقع‌بین» بودن برایم مهم است', optB: '«خلاق» بودن برایم مهم است', typeA: 'S', typeB: 'N'),
-    MbtiQuestion(title: 'بخش دوم: حسی (S) یا شهودی (N) - سوال ۵', optA: 'از روش‌های آزموده‌شده استفاده می‌کنم', optB: 'دنبال راه‌های جدید می‌گردم', typeA: 'S', typeB: 'N'),
-    MbtiQuestion(title: 'بخش دوم: حسی (S) یا شهودی (N) - سوال ۶', optA: 'حال حاضر برایم مهم‌تر از آینده است', optB: 'آینده و امکانات برایم جذاب‌تر از حال است', typeA: 'S', typeB: 'N'),
-    MbtiQuestion(title: 'بخش دوم: حسی (S) یا شهودی (N) - سوال ۷', optA: 'وقتی چیزی می‌خوانم، به کلمات دقیق توجه می‌کنم', optB: 'وقتی چیزی می‌خوانم، دنبال معنای کلی می‌گردم', typeA: 'S', typeB: 'N'),
-    MbtiQuestion(title: 'بخش دوم: حسی (S) یا شهودی (N) - سوال ۸', optA: 'از کارهای دقیق و تکراری خسته نمی‌شوم', optB: 'کارهای تکراری زود خسته‌ام می‌کنند', typeA: 'S', typeB: 'N'),
+    // بخش S vs N
+    MbtiQuestion(title: "در مواجهه با اطلاعات جدید:", optionA: "به جزئیات، آمار و واقعیات ملموس توجه دارم.", optionB: "به کلیت، ارتباطات پنهان و الگوهای کلان می‌نگرم.", typeA: "S", typeB: "N"),
+    MbtiQuestion(title: "بیشتر به چه چیزی علاقه دارید؟", optionA: "مسائل کاربردی که همین الان قابل اجرا باشند.", optionB: "ایده‌ها و نظریه‌های آینده‌نگرانه.", typeA: "S", typeB: "N"),
+    MbtiQuestion(title: "رویکرد شما به تجارب پیشین:", optionA: "به روش‌های آزموده‌شده پایبندم.", optionB: "همواره به دنبال راه‌های جدید و نوآوری هستم.", typeA: "S", typeB: "N"),
+    MbtiQuestion(title: "هنگام توصیف یک رویداد:", optionA: "به ترتیب و با ذکر جزئیات دقیق بیان می‌کنم.", optionB: "برداشت و حس کلی واقعه را تعریف می‌کنم.", typeA: "S", typeB: "N"),
+    MbtiQuestion(title: "شما بیشتر فردی:", optionA: "واقع‌بین و اهل عمل هستید.", optionB: "الهام‌پذیر و صاحب تخیل هستید.", typeA: "S", typeB: "N"),
+    MbtiQuestion(title: "در پروژه‌ها معمولاً:", optionA: "به شیوه‌های گام‌به‌گام و ملموس اعتماد دارم.", optionB: "به بینش ناگهانی و خلاقیت ناخودآگاه اتکا دارم.", typeA: "S", typeB: "N"),
+    MbtiQuestion(title: "علاقه به خواندن کدام متون دارید؟", optionA: "کتب راهنما، تاریخی و مستند.", optionB: "کتب فلسفی، نمادین و استعاری.", typeA: "S", typeB: "N"),
+    MbtiQuestion(title: "در زندگی روزمره:", optionA: "به آنچه در واقعیت وجود دارد تمرکز دارم.", optionB: "به آنچه می‌تواند در آینده خلق شود می‌اندیشم.", typeA: "S", typeB: "N"),
 
-    // بخش سوم: T یا F
-    MbtiQuestion(title: 'بخش سوم: تفکری (T) یا احساسی (F) - سوال ۱', optA: 'در تصمیم‌گیری، منطق و داده برایم اولویت دارد', optB: 'در تصمیم‌گیری، احساسات و ارزش‌ها برایم اولویت دارد', typeA: 'T', typeB: 'F'),
-    MbtiQuestion(title: 'بخش سوم: تفکری (T) یا احساسی (F) - سوال ۲', optA: 'انتقاد صادقانه را به تعریف مؤدبانه ترجیح می‌دهم', optB: 'انتقاد، حتی اگر درست باشد، اگر بی‌ملاحظه باشد آزارم می‌دهد', typeA: 'T', typeB: 'F'),
-    MbtiQuestion(title: 'بخش سوم: تفکری (T) یا احساسی (F) - سوال ۳', optA: 'در تعارض، دنبال راه‌حل منطقی می‌گردم', optB: 'در تعارض، اول می‌خواهم احساسم شنیده شود', typeA: 'T', typeB: 'F'),
-    MbtiQuestion(title: 'بخش سوم: تفکری (T) یا احساسی (F) - سوال ۴', optA: '«عادلانه» بودن برایم مهم‌تر از «مهربانانه» بودن است', optB: '«مهربانانه» بودن برایم مهم‌تر از «عادلانه» بودن است', typeA: 'T', typeB: 'F'),
-    MbtiQuestion(title: 'بخش سوم: تفکری (T) یا احساسی (F) - سوال ۵', optA: 'می‌توانم تصمیم سختی بگیرم بدون اینکه احساساتم مانع شود', optB: 'تصمیم‌های سخت که به کسی آسیب می‌زند برایم دشوار است', typeA: 'T', typeB: 'F'),
-    MbtiQuestion(title: 'بخش سوم: تفکری (T) یا احساسی (F) - سوال ۶', optA: 'وقتی کسی مشکل دارد، اول راه‌حل پیشنهاد می‌دهم', optB: 'وقتی کسی مشکل دارد، اول گوش می‌دهم و همدلی می‌کنم', typeA: 'T', typeB: 'F'),
-    MbtiQuestion(title: 'بخش سوم: تفکری (T) یا احساسی (F) - سوال ۷', optA: 'از بحث‌های منطقی لذت می‌برم', optB: 'از بحث‌های پرتنش ناراحت می‌شوم', typeA: 'T', typeB: 'F'),
-    MbtiQuestion(title: 'بخش سوم: تفکری (T) یا احساسی (F) - سوال ۸', optA: '«درست» بودن برایم مهم‌تر از «محبوب» بودن است', optB: 'هماهنگی در گروه برایم مهم است', typeA: 'T', typeB: 'F'),
+    // بخش T vs F
+    MbtiQuestion(title: "هنگام تصمیم‌گیری مهم:", optionA: "منطق، اصول بی‌طرفانه و سود/زیان را مبنا قرار می‌دهم.", optionB: "ارزش‌های انسانی و احساسات افراد درگیر را ملاک می‌دانم.", typeA: "T", typeB: "F"),
+    MbtiQuestion(title: "در برخورد با اختلاف میان دوستان:", optionA: "حق و حقیقت منطقی را شفاف می‌گویم حتی اگر تلخ باشد.", optionB: "سعی در حفظ هماهنگی، همدلی و آرامش دل‌ها دارم.", typeA: "T", typeB: "F"),
+    MbtiQuestion(title: "انتقاد از دیگران:", optionA: "صریح و بر پایه دلایل منطقی است.", optionB: "با احتیاط و مراعات شدید احساس طرف مقابل همراه است.", typeA: "T", typeB: "F"),
+    MbtiQuestion(title: "کدام صفت بیشتر برازنده شماست؟", optionA: "منطقی و منصف.", optionB: "مهربان و صمیمی.", typeA: "T", typeB: "F"),
+    MbtiQuestion(title: "در قضاوت‌ها:", optionA: "عدالت یکسان برای همه بر اساس ضوابط.", optionB: "درک شرایط ویژه فرد و بخشش عاطفی.", typeA: "T", typeB: "F"),
+    MbtiQuestion(title: "هنگام مواجهه با مشکل دوستتان:", optionA: "سریعاً راه‌حل‌های عملی و تحلیلی پیشنهاد می‌دهم.", optionB: "گوش شنوا می‌شوم و با او همدردی احساسی می‌کنم.", typeA: "T", typeB: "F"),
+    MbtiQuestion(title: "بیشتر به چه تحسینی نیاز دارید؟", optionA: "تحسین شایستگی فکری و کارآمدی.", optionB: "تحسین درک عاطفی و مهربانی.", typeA: "T", typeB: "F"),
+    MbtiQuestion(title: "معیار شما برای سنجش موفقیت:", optionA: "دستیابی به اهداف استاندارد و منطقی.", optionB: "میزان رضایت، پیوند انسانی و آرامش.", typeA: "T", typeB: "F"),
 
-    // بخش چهارم: J یا P
-    MbtiQuestion(title: 'بخش چهارم: قضاوتی (J) یا ادراکی (P) - سوال ۱', optA: 'برنامه‌ریزی قبلی به من آرامش می‌دهد', optB: 'برنامه‌ریزی سفت‌وسخت احساس محدودیت می‌دهد', typeA: 'J', typeB: 'P'),
-    MbtiQuestion(title: 'بخش چهارم: قضاوتی (J) یا ادراکی (P) - سوال ۲', optA: 'کارها را زودتر از موعد تمام می‌کنم', optB: 'اغلب در آخرین لحظه کارها را تمام می‌کنم', typeA: 'J', typeB: 'P'),
-    MbtiQuestion(title: 'بخش چهارم: قضاوتی (J) یا ادراکی (P) - سوال ۳', optA: 'تغییر برنامه در لحظه آخر آزارم می‌دهد', optB: 'تغییر برنامه در لحظه آخر هیجان‌انگیز است', typeA: 'J', typeB: 'P'),
-    MbtiQuestion(title: 'بخش چهارم: قضاوتی (J) یا ادراکی (P) - سوال ۴', optA: 'دوست دارم تصمیم‌ها گرفته شوند و کار تمام شود', optB: 'دوست دارم گزینه‌ها باز بمانند', typeA: 'J', typeB: 'P'),
-    MbtiQuestion(title: 'بخش چهارم: قضاوتی (J) یا ادراکی (P) - سوال ۵', optA: 'فهرست کارها و برنامه روزانه دارم', optB: 'فهرست کارها برایم محدودکننده است', typeA: 'J', typeB: 'P'),
-    MbtiQuestion(title: 'بخش چهارم: قضاوتی (J) یا ادراکی (P) - سوال ۶', optA: 'محیط نامرتب حواسم را پرت می‌کند', optB: 'می‌توانم در محیط نامرتب هم کار کنم', typeA: 'J', typeB: 'P'),
-    MbtiQuestion(title: 'بخش چهارم: قضاوتی (J) یا ادراکی (P) - سوال ۷', optA: 'ترجیح می‌دهم همه چیز مشخص و قطعی باشد', optB: 'با ابهام و عدم قطعیت راحتم', typeA: 'J', typeB: 'P'),
-    MbtiQuestion(title: 'بخش چهارم: قضاوتی (J) یا ادراکی (P) - سوال ۸', optA: 'وقتی کاری نیمه‌تمام است، ذهنم درگیر است', optB: 'می‌توانم چند کار نیمه‌تمام داشته باشم بدون استرس', typeA: 'J', typeB: 'P'),
+    // بخش J vs P
+    MbtiQuestion(title: "در امور روزانه:", optionA: "برنامه‌ریزی دقیق، جدول زمانی و ددلاین‌ها را دوست دارم.", optionB: "انعطاف‌پذیری و جریان خودانگیخته را ترجیح می‌دهم.", typeA: "J", typeB: "P"),
+    MbtiQuestion(title: "قبل از سفر:", optionA: "همه چیز را رزرو کرده و برنامه مشخص می‌نویسم.", optionB: "بدون نقشه قبلی می‌روم تا در لحظه تصمیم بگیرم.", typeA: "J", typeB: "P"),
+    MbtiQuestion(title: "انجام کارها و تکالیف:", optionA: "خیلی زودتر از موعد تحویل تمام می‌کنم.", optionB: "در لحظات آخر و زیر فشار نهایی بهترین نتیجه را می‌گیرم.", typeA: "J", typeB: "P"),
+    MbtiQuestion(title: "نظم اتاق و میز کار شما:", optionA: "همیشه مرتب، سازمان‌یافته و در جای مشخص است.", optionB: "نظم خلاقانه در بی‌نظمی ظاهری وجود دارد.", typeA: "J", typeB: "P"),
+    MbtiQuestion(title: "پرونده‌ها و تصمیمات:", optionA: "سریعاً تصمیم نهایی را می‌گیرم و پرونده را می‌بندم.", optionB: "ترجیح می‌دهم گزینه‌ها باز بمانند تا اطلاعات جدید برسد.", typeA: "J", typeB: "P"),
+    MbtiQuestion(title: "سبک زندگی شما:", optionA: "ساختاریافته و همراه با چارچوب‌های تثبیت‌شده.", optionB: "تطبیق‌پذیر، غیرمنتظره و بازی‌گوشانه با رویدادها.", typeA: "J", typeB: "P"),
+    MbtiQuestion(title: "تغییر ناگهانی در برنامه‌ها:", optionA: "مرا کلافه و مضطرب می‌کند.", optionB: "به عنوان فرصتی جدید و هیجان‌انگیز از آن استقبال می‌کنم.", typeA: "J", typeB: "P"),
+    MbtiQuestion(title: "رضایت درونی شما از چیست؟", optionA: "تیک زدن و پایان دادن کامل به وظایف.", optionB: "شروع کاوش‌های نو و جریان تجربه اندوزی.", typeA: "J", typeB: "P"),
   ];
 
-  static const Map<String, Map<String, String>> personalityDetails = {
-    'INFJ': {
-      'title': 'حامی و مشاور معنوی (The Advocate)',
-      'desc': 'شما فردی با بصیرت عمیق، آرمان‌گرا و سرشار از بینش معنوی هستید. ارتباط میان معانی پنهان عالم را به خوبی درک می‌کنید و همواره به دنبال هدایت، رشد و کمال دیگران می‌باشید. وجدان بیدار، سکوت پرمعنا و نگاه تعالی‌بخش از ویژگی‌های بارز شماست.'
-    },
-    'INTJ': {
-      'title': 'معمار و استراتژیست (The Architect)',
-      'desc': 'فکری نظام‌مند، نوآور و دوراندیش دارید. ساختارهای فکری پیچیده را به سادگی تحلیل می‌کنید و همواره در پی کمال‌بخشی به سیستم‌ها، برنامه‌ها و نظریه‌ها هستید. تصمیم‌گیری‌های شما مبتنی بر منطق محض و دوراندیشی عمیق است.'
-    },
-    'INFP': {
-      'title': 'میانجی و سالک آرمان‌گرا (The Mediator)',
-      'desc': 'شخصیتی لطیف، متفکر و پایبند به ارزش‌های عمیق درونی دارید. به دنبال اصالت، خلوص نیت و زیبایی‌های معنوی هستید. زبان هنر، شعر و تفکر عمیق را به نیکی می‌فهمید و همواره با مهربانی و درک بالا با دیگران تعامل می‌کنید.'
-    },
-    'INTP': {
-      'title': 'متفکر و پژوهشگر حقیقت (The Logician)',
-      'desc': 'عاشق کاوش در نظریه‌ها، کشف قوانین حاکم بر هستی و حل مسائل فلسفی و منطقی هستید. ذهنی تحلیل‌گر، مستقل و نقاد دارید و از کشف ارتباط میان مفاهیم نوظهور و ناشناخته عمیقاً لذت می‌برید.'
-    },
-    'ENFJ': {
-      'title': 'راهنما و مربی الهام‌بخش (The Protagonist)',
-      'desc': 'رهبری پرجاذبه، دلسوز و آرمان‌خواه هستید. استعداد شگرفی در برانگیختن انگیزه‌های معنوی و انسانی در دیگران دارید و با شور و اشتیاق وافر برای ساختن جامعه‌ای بهتر و رشددهنده‌تر تلاش می‌کنید.'
-    },
-    'ENTJ': {
-      'title': 'فرمانده و مدیر راهبردی (The Commander)',
-      'desc': 'شخصیتی قاطع، مقتدر و سازمان‌دهنده دارید. نگاه کلان، توانایی در ترسیم اهداف بلندمدت و بسیج امکانات برای دستیابی به مقاصد بزرگ از صفات متمایز شماست. با صلابت بر موانع غلبه می‌کنید.'
-    },
-    'ENFP': {
-      'title': 'پیک الهام و مشتاق اندیشه (The Campaigner)',
-      'desc': 'پر از شور و شوق، خلاقیت و دیدگاه‌های بدیع هستید. روابط انسانی گرم و پرمحبتی برقرار می‌کنید و در هر موقعیتی، امکانات نو و افق‌های امیدبخش را مشاهده و به اطرافیان منتقل می‌نمایید.'
-    },
-    'ENTP': {
-      'title': 'مناظره‌گر و نوآور پویا (The Debater)',
-      'desc': 'فکری پویا، چابک و سرشار از شوخ‌طبعی و نبوغ دارید. از به چالش کشیدن باورهای سنتی و رسیدن به افق‌های جدید لذت می‌برید و در بحث‌های منطقی و اقناعی بسیار توانمندید.'
-    },
-    'ISFJ': {
-      'title': 'مدافع و خادم فداکار (The Protector)',
-      'desc': 'بسیار صبور، باوفا، خدمت‌گزار و مبادی آداب هستید. با آرامش و اخلاص کامل، بدون هیچ چشم‌داشتی به یاری اطرافیان می‌شتابید و در صیانت از ارزش‌ها و سنت‌های نیکو ثبات قدم دارید.'
-    },
-    'ISTJ': {
-      'title': 'بازرس و امین وظیفه‌شناس (The Inspector)',
-      'desc': 'شخصیتی منظم، واقع‌بین، مسئولیت‌پذیر و پایبند به انضباط هستید. دقت بالا در انجام تکالیف، رعایت امانت و اهتمام به جزئیات و حقایق ملموس، شما را به تکیه‌گاهی مطمئن تبدیل کرده است.'
-    },
-    'ESFJ': {
-      'title': 'سفیر مهر و حامی جامعه (The Caregiver)',
-      'desc': 'کانون گرمی، محبت و هماهنگی در جمع هستید. خدمت به اهل منزل و یاران، حفظ پیوندهای اجتماعی و مراقبت از سلامت روحی دیگران، اولویت نخست زندگی شما به شمار می‌رود.'
-    },
-    'ESTJ': {
-      'title': 'ناظر و مدیر نظم‌آفرین (The Executive)',
-      'desc': 'منظم، واقع‌گرا، صریح و سخت‌کوش هستید. در مدیریت منابع، ساماندهی امور روزمره و برقراری رویه‌های عادلانه و ساختاریافته استادی تمام‌عیار به شمار می‌روید.'
-    },
-    'ISFP': {
-      'title': 'هنرمند و کاوشگر زیبایی (The Adventurer)',
-      'desc': 'روحی لطیف، متواضع و سرشار از درک زیبایی‌ها دارید. بی سر و صدا در پی کسب تجارب اصیل و ارزشمند در زندگی هستید و آرامش و صفای درون را بر هر تعارض و هیاهویی ترجیح می‌دهید.'
-    },
-    'ISTP': {
-      'title': 'صنعتگر و چیره‌دست کاردان (The Virtuoso)',
-      'desc': 'فردی عمل‌گرا، تحلیل‌گر، ماهر و خونسرد در بحران‌ها هستید. با ابزارها و سازوکارهای عینی به خوبی ارتباط برقرار می‌کنید و مسائل را با راه‌حل‌های عملی و منطقی رفع می‌نمایید.'
-    },
-    'ESFP': {
-      'title': 'شادی‌آفرین و پیام‌آور سرزندگی (The Entertainer)',
-      'desc': 'پر از نشاط، شادابی، ذوق زیستن و بخشش هستید. با حضور خود صفا و تحرک به مجالس می‌بخشید و از لحظه لحظه زندگی و نعمت‌های موجود در آن شکرگزارانه بهره می‌برید.'
-    },
-    'ESTP': {
-      'title': 'کارآفرین و پیشگام باصلابت (The Entrepreneur)',
-      'desc': 'شجاع، واقع‌گرا، اهل اقدام صریح و تصمیم‌گیری سریع هستید. از پذیرش چالش‌ها و مواجهه مستقیم با واقعیت‌های متغیر هراسی ندارید و با هوشمندی فرصت‌ها را شکار می‌کنید.'
-    },
+  final Map<String, Map<String, String>> _personalityDetails = {
+    'INTJ': {'title': 'معمار / استراتژیست', 'desc': 'متفکرانی مبتکر با انگیزه‌ای درونی برای اجرای ایده‌ها و رسیدن به هدف‌ها. تحلیل‌گر، مستقل و کمال‌گرا.'},
+    'INTP': {'title': 'اندیشمند / منطق‌دان', 'desc': 'جستجوگر تبیین‌های منطقی برای هر پدیده؛ تئوریکMbtiQuestion(title: "پرونده‌ها و تصمیمات:", optionA: "سریعاً تصمیم نهایی را می‌گیرم و پرونده را می‌بندم.", optionB: "ترجیح می‌دهم گزینه‌ها باز بمانند تا اطلاعات جدید برسد.", typeA: "J", typeB: "P"),
+    MbtiQuestion(title: "سبک زندگی شما:", optionA: "ساختاریافته و همراه با چارچوب‌های تثبیت‌شده.", optionB: "تطبیق‌پذیر، غیرمنتظره و بازی‌گوشانه با رویدادها.", typeA: "J", typeB: "P"),
+    MbtiQuestion(title: "تغییر ناگهانی در برنامه‌ها:", optionA: "مرا کلافه و مضطرب می‌کند.", optionB: "به عنوان فرصتی جدید و هیجان‌انگیز از آن استقبال می‌کنم.", typeA: "J", typeB: "P"),
+    MbtiQuestion(title: "رضایت درونی شما از چیست؟", optionA: "تیک زدن و پایان دادن کامل به وظایف.", optionB: "شروع کاوش‌های نو و جریان تجربه اندوزی.", typeA: "J", typeB: "P"),
+  ];
+
+  final Map<String, Map<String, String>> _personalityDetails = {
+    'INTJ': {'title': 'معمار / استراتژیست', 'desc': 'متفکرانی مبتکر با انگیزه‌ای درونی برای اجرای ایده‌ها و رسیدن به هدف‌ها. تحلیل‌گر، مستقل و کمال‌گرا.'},
+    'INTP': {'title': 'اندیشمند / منطق‌دان', 'desc': 'جستجوگر تبیین‌های منطقی برای هر پدیده؛ تئوریک، کنجکاو، دقیق و علاقه‌مند به مفاهیم محض.'},
+    'ENTJ': {'title': 'فرمانده / پیشرو', 'desc': 'رهبرانی قاطع، رک و سامان‌دهنده که سیستم‌ها و نیروها را برای تحقق مقاصد به خوبی سازماندهی می‌کنند.'},
+    'ENTP': {'title': 'مبتکر / مجادله‌گر', 'desc': 'سریع، زیرک، مشتاق مناظره، عاشق طرح احتملموس باور دارند.'},
+    'ESFJ': {'title': 'سفیر / مراقب', 'desc': 'خوش‌مشرب، خونگرم، وظیفه‌شناس و هماهنگ‌کننده جوامع انسانی با حساسیت نسبت به نیاز دیگران.'},
+    'ISTP': {'title': 'چیره‌دست / مکانیک', 'desc': 'ناظرانی تیزبین، خونسرد، مسلط بر ابزارها و اهل عمل که مسائل پیچیده فنی را در سکوت حل می‌کنند.'},
+    'ISFP': {'title': 'هنرمند / ماجراجو', 'desc': 'آرام، حساس، لذت‌برنده از لحظه حال، دارای درک زیباشناختی بسیار بالا و وفادار به باورها.'},
+    'ESTP': {'title': 'کارآفرین / پویا', 'desc': 'اهل ریسک، سریع در واکنش، عمل‌گرا، عاشق هیجان و مواجهه عملی با امور ملموس زندگی.'},
+    'ESFP': {'title': 'بازیگر / سرگرم‌کننده', 'desc': 'برون‌گرا، خودانگیخته، شاد و سرزنده که لذت حضور را به همگان هدیه می‌دهند.'},
   };
 
   void _calculateResult() {
-    int countE = 0, countI = 0;
-    int countS = 0, countN = 0;
-    int countT = 0, countF = 0;
-    int countJ = 0, countP = 0;
+    int e = 0, i = 0, s = 0, n = 0, t = 0, f = 0, j = 0, p = 0;
 
-    for (int i = 0; i < 8; i++) {
-      if (_answers[i] == 'E') countE++;
-      if (_answers[i] == 'I') countI++;
-    }
-    for (int i = 8; i < 16; i++) {
-      if (_answers[i] == 'S') countS++;
-      if (_answers[i] == 'N') countN++;
-    }
-    for (int i = 16; i < 24; i++) {
-      if (_answers[i] == 'T') countT++;
-      if (_answers[i] == 'F') countF++;
-    }
-    for (int i = 24; i < 32; i++) {
-      if (_answers[i] == 'J') countJ++;
-      if (_answers[i] == 'P') countP++;
-    }
-
-    final String res = (countE >= countI ? 'E' : 'I') +
-        (countS >= countN ? 'S' : 'N') +
-        (countT >= countF ? 'T' : 'F') +
-        (countJ >= countP ? 'J' : 'P');
-
-    setState(() {
-      _calculatedType = res;
-      _showResult = true;
+    _answers.forEach((index, ans) {
+      if (ans == 'E') e++;
+      if (ans == 'I') i++;
+      if (ans == 'S') s++;
+      if (ans == 'N') n++;
+      if (ans == 'T') t++;
+      if (ans == 'F') f++;
+      if (ans == 'J') j++;
+      if (ans == 'P') p++;
     });
-  }
 
-  void _resetQuiz() {
+    String type = '';
+    type += (e >= i) ? 'E' : 'I';
+    type += (s >= n) ? 'S' : 'N';
+    type += (t >= f) ? 'T' : 'F';
+    type += (j >= p) ? 'J' : 'P';
+
     setState(() {
-      _answers.clear();
-      _showResult = false;
-      _calculatedType = '';
+      _finalResult = type;
     });
   }
 
   @override
   Widget build(BuildContext context) {
-    if (_showResult) {
-      final details = personalityDetails[_calculatedType] ?? {
-        'title': 'تیپ شخصیتی $_calculatedType',
-        'desc': 'توضیحات تکمیلی برای این تیپ ثبت شده است.'
-      };
-
-      return SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                color: const Color(0xFF262638),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: const Color(0xFFFF6B4A), width: 1.5),
-              ),
-              child: Column(
-                children: [
-                  const Icon(Icons.stars_rounded, color: Color(0xFFFFB300), size: 60),
-                  const SizedBox(height: 12),
-                  const Text('نتیجه ارزیابی شخصیت شما',
-                      style: TextStyle(color: Colors.white70, fontSize: 14)),
-                  const SizedBox(height: 6),
-                  Text(
-                    _calculatedType,
-                    style: const TextStyle(
-                        color: Color(0xFFFF6B4A),
-                        fontSize: 34,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 2),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    details['title']!,
-                    style: const TextStyle(
-                        color: Colors.white, fontSize: 17, fontWeight: FontWeight.bold),
-                    textAlign: TextAlign.center,
-                  ),
-                  const Divider(color: Colors.white24, height: 28),
-                  Text(
-                    details['desc']!,
-                    style: const TextStyle(
-                        color: Colors.white70, fontSize: 14.5, height: 1.8),
-                    textAlign: TextAlign.justify,
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 24),
-            SizedBox(
-              width: double.infinity,
-              height: 48,
-              child: ElevatedButton.icon(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFFF6B4A),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+    if (_finalResult != null) {
+      final info = _personalityDetails[_finalResult] ?? {'title': 'نامشخص', 'desc': ''};
+      return Center(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF27293D),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: const Color(0xFFFF6B4A), width: 2),
                 ),
-                onPressed: _resetQuiz,
-                icon: const Icon(Icons.refresh_rounded, color: Colors.white),
-                label: const Text('آزمون مجدد',
-                    style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold)),
+                child: Column(
+                  children: [
+                    const Text('نتیجه سنخ‌شناسی شخصیتی شما', style: TextStyle(fontSize: 14, color: Colors.white70)),
+                    const SizedBox(height: 10),
+                    Text(
+                      _finalResult!,
+                      style: const TextStyle(fontSize: 40, fontWeight: FontWeight.bold, color: Color(0xFFFF6B4A)),
+                    ),
+                    Text(
+                      info['title']!,
+                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF38BDF8)),
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      info['desc']!,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(fontSize: 13.5, height: 1.6, color: Colors.white),
+                    ),
+                  ],
+                ),
               ),
-            ),
-          ],
+              const SizedBox(height: 24),
+              ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFFF6B4A)),
+                icon: const Icon(Icons.refresh, color: Colors.white),
+                label: const Text('پاسخ‌گویی مجدد', style: TextStyle(color: Colors.white)),
+                onPressed: () {
+                  setState(() {
+                    _answers.clear();
+                    _finalResult = null;
+                  });
+                },
+              ),
+            ],
+          ),
         ),
       );
     }
 
-    final int answeredCount = _answers.length;
-    final double progress = answeredCount / questions.length;
-
     return Column(
       children: [
-        Container(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-          color: const Color(0xFF1E1E2E),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+        LinearProgressIndicator(
+          value: _answers.length / _questions.length,
+          backgroundColor: const Color(0xFF27293D),
+          color: const Color(0xFFFF6B4A),
+        ),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text(
-                    'آزمون خودارزیابی MBTI (نسخه دانشجویی)',
-                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
-                  ),
-                  Text(
-                    '$answeredCount از ۳۲ پاسخ داده شده',
-                    style: const TextStyle(color: Color(0xFFFFB300), fontSize: 12.5),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              ClipRRect(
-                borderRadius: BorderRadius.circular(6),
-                child: LinearProgressIndicator(
-                  value: progress,
-                  minHeight: 7,
-                  backgroundColor: Colors.white12,
-                  color: const Color(0xFFFF6B4A),
-                ),
-              ),
+              const Text('آزمون خودارزیابی سنخ شخصیتی (MBTI)', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold)),
+              Text('${_answers.length} از ${_questions.length}', style: const TextStyle(fontSize: 12, color: Color(0xFFFF6B4A))),
             ],
           ),
         ),
         Expanded(
           child: ListView.builder(
             padding: const EdgeInsets.all(12),
-            itemCount: questions.length,
-            itemBuilder: (context, index) {
-              final q = questions[index];
-              final currentAns = _answers[index];
+            itemCount: _questions.length,
+            itemBuilder: (ctx, idx) {
+              final q = _questions[idx];
+              final selected = _answers[idx];
 
               return Card(
-                color: const Color(0xFF262638),
+                color: const Color(0xFF27293D),
                 margin: const EdgeInsets.only(bottom: 12),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  side: BorderSide(
-                    color: currentAns != null ? const Color(0xFFFF6B4A).withOpacity(0.5) : Colors.transparent,
-                    width: 1,
-                  ),
-                ),
                 child: Padding(
-                  padding: const EdgeInsets.all(12),
+                  padding: const EdgeInsets.all(12.0),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        q.title,
-                        style: const TextStyle(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.bold),
-                      ),
-                      const SizedBox(height: 10),
-                      InkWell(
-                        onTap: () {
-                          setState(() {
-                            _answers[index] = q.typeA;
-                          });
-                        },
-                        borderRadius: BorderRadius.circular(8),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-                          decoration: BoxDecoration(
-                            color: currentAns == q.typeA ? const Color(0xFFFF6B4A).withOpacity(0.2) : Colors.black12,
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(
-                              color: currentAns == q.typeA ? const Color(0xFFFF6B4A) : Colors.white10,
-                            ),
-                          ),
-                          child: Row(
-                            children: [
-                              Icon(
-                                currentAns == q.typeA ? Icons.radio_button_checked : Icons.radio_button_off,
-                                color: currentAns == q.typeA ? const Color(0xFFFF6B4A) : Colors.white38,
-                                size: 18,
-                              ),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: Text(
-                                  q.optA,
-                                  style: TextStyle(
-                                    color: currentAns == q.typeA ? Colors.white : Colors.white70,
-                                    fontSize: 13.5,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
+                      Text('${idx + 1}. ${q.title}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
                       const SizedBox(height: 8),
-                      InkWell(
-                        onTap: () {
-                          setState(() {
-                            _answers[index] = q.typeB;
-                          });
-                        },
-                        borderRadius: BorderRadius.circular(8),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-                          decoration: BoxDecoration(
-                            color: currentAns == q.typeB ? const Color(0xFFFF6B4A).withOpacity(0.2) : Colors.black12,
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(
-                              color: currentAns == q.typeB ? const Color(0xFFFF6B4A) : Colors.white10,
-                            ),
-                          ),
-                          child: Row(
-                            children: [
-                              Icon(
-                                currentAns == q.typeB ? Icons.radio_button_checked : Icons.radio_button_off,
-                                color: currentAns == q.typeB ? const Color(0xFFFF6B4A) : Colors.white38,
-                                size: 18,
-                              ),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: Text(
-                                  q.optB,
-                                  style: TextStyle(
-                                    color: currentAns == q.typeB ? Colors.white : Colors.white70,
-                                    fontSize: 13.5,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
+                      RadioListTile<String>(
+                        value: q.typeA,
+                        groupValue: selected,
+                        activeColor: const Color(0xFFFF6B4A),
+                        title: Text(q.optionA, style: const TextStyle(fontSize: 12)),
+                        onChanged: (val) => setState(() => _answers[idx] = val!),
+                      ),
+                      RadioListTile<String>(
+                        value: q.typeB,
+                        groupValue: selected,
+                        activeColor: const Color(0xFFFF6B4A),
+                        title: Text(q.optionB, style: const TextStyle(fontSize: 12)),
+                        onChanged: (val) => setState(() => _answers[idx] = val!),
                       ),
                     ],
                   ),
@@ -1239,22 +1347,18 @@ class _MbtiQuizScreenState extends State<MbtiQuizScreen> {
             },
           ),
         ),
-        Container(
-          padding: const EdgeInsets.all(12),
-          color: const Color(0xFF1E1E2E),
+        Padding(
+          padding: const EdgeInsets.all(12.0),
           child: SizedBox(
             width: double.infinity,
-            height: 46,
+            height: 48,
             child: ElevatedButton(
               style: ElevatedButton.styleFrom(
-                backgroundColor: answeredCount == 32 ? const Color(0xFFFF6B4A) : Colors.grey.shade800,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                backgroundColor: const Color(0xFFFF6B4A),
+                disabledBackgroundColor: Colors.white24,
               ),
-              onPressed: answeredCount == 32 ? _calculateResult : null,
-              child: Text(
-                answeredCount == 32 ? 'مشاهده نتیجه تیپ شخصیتی' : 'پاسخ به همه سوالات (${32 - answeredCount} مانده)',
-                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
-              ),
+              onPressed: _answers.length == _questions.length ? _calculateResult : null,
+              child: const Text('مشاهده تحلیل شخصیت', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
             ),
           ),
         ),
