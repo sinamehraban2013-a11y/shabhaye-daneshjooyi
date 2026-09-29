@@ -1313,19 +1313,20 @@ class PdfViewerScreen extends StatelessWidget {
 }
 
 // ==========================================
-// بخش تست MBTI (کامل ۳۲ سواله و آفلاین)
+// صفحه و منطق تست شخصیت‌شناسی MBTI
 // ==========================================
+
 class MbtiQuestion {
   final String title;
-  final String optionA;
-  final String optionB;
+  final String optA;
+  final String optB;
   final String typeA;
   final String typeB;
 
-  MbtiQuestion({
+  const MbtiQuestion({
     required this.title,
-    required this.optionA,
-    required this.optionB,
+    required this.optA,
+    required this.optB,
     required this.typeA,
     required this.typeB,
   });
@@ -1340,198 +1341,370 @@ class MbtiQuizScreen extends StatefulWidget {
 
 class _MbtiQuizScreenState extends State<MbtiQuizScreen> {
   final Map<int, String> _answers = {};
-  String? _finalResult;
+  bool _showResult = false;
+  String _calculatedType = '';
 
-  final List<MbtiQuestion> _questions = [
-    // بخش E vs I
-    MbtiQuestion(title: "در جمع‌های شلوغ معمولاً:", optionA: "انرژی بیشتری می‌گیرم و سرزنده می‌شوم.", optionB: "انرژی‌ام تحلیل می‌رود و نیاز به خلوت دارم.", typeA: "E", typeB: "I"),
-    MbtiQuestion(title: "برای حل مسائل فکری ترجیح می‌دهید:", optionA: "با دیگران همفکری و گفتگو کنم.", optionB: "ابتدا در تنهایی خودم به آن فکر کنم.", typeA: "E", typeB: "I"),
-    MbtiQuestion(title: "در یک محیط تازه:", optionA: "سریعاً با دیگران ارتباط برقرار می‌کنم.", optionB: "کمی صبر می‌کنم تا بقیه جلو بیایند.", typeA: "E", typeB: "I"),
-    MbtiQuestion(title: "بعد از یک هفته کاری سنگین:", optionA: "رفتن به دورهمی خستگی‌ام را در می‌آورد.", optionB: "ماندن در خانه و مطالعه/استراحت آرامم می‌کند.", typeA: "E", typeB: "I"),
-    MbtiQuestion(title: "معمولاً:", optionA: "ابتدا حرف می‌زنم و سپس عمیقاً فکر می‌کنم.", optionB: "ابتدا در ذهن می‌سنجم و بعد سخن می‌گویم.", typeA: "E", typeB: "I"),
-    MbtiQuestion(title: "دایره ارتباطات شما:", optionA: "گسترده و شامل افراد گوناگون است.", optionB: "محدود به چند دوست بسیار نزدیک و عمیق است.", typeA: "E", typeB: "I"),
-    MbtiQuestion(title: "در اوقات فراغت:", optionA: "فعالیت گروهی را ترجیح می‌دهم.", optionB: "فعالیت فردی و تمرکز درونی را می‌پسندم.", typeA: "E", typeB: "I"),
-    MbtiQuestion(title: "دیگران معمولاً شما را فردی:", optionA: "پرانرژی و برون‌ریز می‌دانند.", optionB: "آرام، تودار و متفکر توصیف می‌کنند.", typeA: "E", typeB: "I"),
+  static const List<MbtiQuestion> questions = [
+    // بخش اول: E یا I
+    MbtiQuestion(title: 'بخش اول: برون‌گرایی (E) یا درون‌گرایی (I) - سوال ۱', optA: 'بعد از یک مهمانی شلوغ، احساس سرزندگی می‌کنم', optB: 'بعد از یک مهمانی شلوغ، احساس خستگی می‌کنم', typeA: 'E', typeB: 'I'),
+    MbtiQuestion(title: 'بخش اول: برون‌گرایی (E) یا درون‌گرایی (I) - سوال ۲', optA: 'ترجیح می‌دهم در گروه فکر کنم و حرف بزنم', optB: 'ترجیح می‌دهم اول تنها فکر کنم، بعد بگویم', typeA: 'E', typeB: 'I'),
+    MbtiQuestion(title: 'بخش اول: برون‌گرایی (E) یا درون‌گرایی (I) - سوال ۳', optA: 'دوستان زیادی دارم و راحت آشنا می‌شوم', optB: 'دوستان کمی دارم اما روابطم عمیق است', typeA: 'E', typeB: 'I'),
+    MbtiQuestion(title: 'بخش اول: برون‌گرایی (E) یا درون‌گرایی (I) - سوال ۴', optA: 'سکوت در جمع برایم ناراحت‌کننده است', optB: 'سکوت در جمع برایم طبیعی و راحت است', typeA: 'E', typeB: 'I'),
+    MbtiQuestion(title: 'بخش اول: برون‌گرایی (E) یا درون‌گرایی (I) - سوال ۵', optA: 'وقتی تنها هستم، دنبال کاری برای انجام دادن می‌گردم', optB: 'وقتی تنها هستم، از آن لذت می‌برم', typeA: 'E', typeB: 'I'),
+    MbtiQuestion(title: 'بخش اول: برون‌گرایی (E) یا درون‌گرایی (I) - سوال ۶', optA: 'در جمع انرژی می‌گیرم', optB: 'در خلوت انرژی می‌گیرم', typeA: 'E', typeB: 'I'),
+    MbtiQuestion(title: 'بخش اول: برون‌گرایی (E) یا درون‌گرایی (I) - سوال ۷', optA: 'ترجیح می‌دهم با تلفن صحبت کنم', optB: 'ترجیح می‌دهم پیام بدهم', typeA: 'E', typeB: 'I'),
+    MbtiQuestion(title: 'بخش اول: برون‌گرایی (E) یا درون‌گرایی (I) - سوال ۸', optA: 'اغلب قبل از فکر کردن حرف می‌زنم', optB: 'اغلب قبل از حرف زدن فکر می‌کنم', typeA: 'E', typeB: 'I'),
 
-    // بخش S vs N
-    MbtiQuestion(title: "در مواجهه با اطلاعات جدید:", optionA: "به جزئیات، آمار و واقعیات ملموس توجه دارم.", optionB: "به کلیت، ارتباطات پنهان و الگوهای کلان می‌نگرم.", typeA: "S", typeB: "N"),
-    MbtiQuestion(title: "بیشتر به چه چیزی علاقه دارید؟", optionA: "مسائل کاربردی که همین الان قابل اجرا باشند.", optionB: "ایده‌ها و نظریه‌های آینده‌نگرانه.", typeA: "S", typeB: "N"),
-    MbtiQuestion(title: "رویکرد شما به تجارب پیشین:", optionA: "به روش‌های آزموده‌شده پایبندم.", optionB: "همواره به دنبال راه‌های جدید و نوآوری هستم.", typeA: "S", typeB: "N"),
-    MbtiQuestion(title: "هنگام توصیف یک رویداد:", optionA: "به ترتیب و با ذکر جزئیات دقیق بیان می‌کنم.", optionB: "برداشت و حس کلی واقعه را تعریف می‌کنم.", typeA: "S", typeB: "N"),
-    MbtiQuestion(title: "شما بیشتر فردی:", optionA: "واقع‌بین و اهل عمل هستید.", optionB: "الهام‌پذیر و صاحب تخیل هستید.", typeA: "S", typeB: "N"),
-    MbtiQuestion(title: "در پروژه‌ها معمولاً:", optionA: "به شیوه‌های گام‌به‌گام و ملموس اعتماد دارم.", optionB: "به بینش ناگهانی و خلاقیت ناخودآگاه اتکا دارم.", typeA: "S", typeB: "N"),
-    MbtiQuestion(title: "علاقه به خواندن کدام متون دارید؟", optionA: "کتب راهنما، تاریخی و مستند.", optionB: "کتب فلسفی، نمادین و استعاری.", typeA: "S", typeB: "N"),
-    MbtiQuestion(title: "در زندگی روزمره:", optionA: "به آنچه در واقعیت وجود دارد تمرکز دارم.", optionB: "به آنچه می‌تواند در آینده خلق شود می‌اندیشم.", typeA: "S", typeB: "N"),
+    // بخش دوم: S یا N
+    MbtiQuestion(title: 'بخش دوم: حسی (S) یا شهودی (N) - سوال ۱', optA: 'به جزئیات و واقعیت‌های ملموس توجه می‌کنم', optB: 'به الگوها و معناهای پنهان توجه می‌کنم', typeA: 'S', typeB: 'N'),
+    MbtiQuestion(title: 'بخش دوم: حسی (S) یا شهودی (N) - سوال ۲', optA: 'ترجیح می‌دهم دستورالعمل گام‌به‌گام داشته باشم', optB: 'ترجیح می‌دهم کلیت کار را بفهمم و خودم جزئیات را پر کنم', typeA: 'S', typeB: 'N'),
+    MbtiQuestion(title: 'بخش دوم: حسی (S) یا شهودی (N) - سوال ۳', optA: 'به تجربه‌ی عملی بیشتر از نظریه اعتماد دارم', optB: 'ایده‌های جدید و نظریه‌ها برایم جذاب‌اند', typeA: 'S', typeB: 'N'),
+    MbtiQuestion(title: 'بخش دوم: حسی (S) یا شهودی (N) - سوال ۴', optA: '«واقع‌بین» بودن برایم مهم است', optB: '«خلاق» بودن برایم مهم است', typeA: 'S', typeB: 'N'),
+    MbtiQuestion(title: 'بخش دوم: حسی (S) یا شهودی (N) - سوال ۵', optA: 'از روش‌های آزموده‌شده استفاده می‌کنم', optB: 'دنبال راه‌های جدید می‌گردم', typeA: 'S', typeB: 'N'),
+    MbtiQuestion(title: 'بخش دوم: حسی (S) یا شهودی (N) - سوال ۶', optA: 'حال حاضر برایم مهم‌تر از آینده است', optB: 'آینده و امکانات برایم جذاب‌تر از حال است', typeA: 'S', typeB: 'N'),
+    MbtiQuestion(title: 'بخش دوم: حسی (S) یا شهودی (N) - سوال ۷', optA: 'وقتی چیزی می‌خوانم، به کلمات دقیق توجه می‌کنم', optB: 'وقتی چیزی می‌خوانم، دنبال معنای کلی می‌گردم', typeA: 'S', typeB: 'N'),
+    MbtiQuestion(title: 'بخش دوم: حسی (S) یا شهودی (N) - سوال ۸', optA: 'از کارهای دقیق و تکراری خسته نمی‌شوم', optB: 'کارهای تکراری زود خسته‌ام می‌کنند', typeA: 'S', typeB: 'N'),
 
-    // بخش T vs F
-    MbtiQuestion(title: "هنگام تصمیم‌گیری مهم:", optionA: "منطق، اصول بی‌طرفانه و سود/زیان را مبنا قرار می‌دهم.", optionB: "ارزش‌های انسانی و احساسات افراد درگیر را ملاک می‌دانم.", typeA: "T", typeB: "F"),
-    MbtiQuestion(title: "در برخورد با اختلاف میان دوستان:", optionA: "حق و حقیقت منطقی را شفاف می‌گویم حتی اگر تلخ باشد.", optionB: "سعی در حفظ هماهنگی، همدلی و آرامش دل‌ها دارم.", typeA: "T", typeB: "F"),
-    MbtiQuestion(title: "انتقاد از دیگران:", optionA: "صریح و بر پایه دلایل منطقی است.", optionB: "با احتیاط و مراعات شدید احساس طرف مقابل همراه است.", typeA: "T", typeB: "F"),
-    MbtiQuestion(title: "کدام صفت بیشتر برازنده شماست؟", optionA: "منطقی و منصف.", optionB: "مهربان و صمیمی.", typeA: "T", typeB: "F"),
-    MbtiQuestion(title: "در قضاوت‌ها:", optionA: "عدالت یکسان برای همه بر اساس ضوابط.", optionB: "درک شرایط ویژه فرد و بخشش عاطفی.", typeA: "T", typeB: "F"),
-    MbtiQuestion(title: "هنگام مواجهه با مشکل دوستتان:", optionA: "سریعاً راه‌حل‌های عملی و تحلیلی پیشنهاد می‌دهم.", optionB: "گوش شنوا می‌شوم و با او همدردی احساسی می‌کنم.", typeA: "T", typeB: "F"),
-    MbtiQuestion(title: "بیشتر به چه تحسینی نیاز دارید؟", optionA: "تحسین شایستگی فکری و کارآمدی.", optionB: "تحسین درک عاطفی و مهربانی.", typeA: "T", typeB: "F"),
-    MbtiQuestion(title: "معیار شما برای سنجش موفقیت:", optionA: "دستیابی به اهداف استاندارد و منطقی.", optionB: "میزان رضایت، پیوند انسانی و آرامش.", typeA: "T", typeB: "F"),
+    // بخش سوم: T یا F
+    MbtiQuestion(title: 'بخش سوم: تفکری (T) یا احساسی (F) - سوال ۱', optA: 'در تصمیم‌گیری، منطق و داده برایم اولویت دارد', optB: 'در تصمیم‌گیری، احساسات و ارزش‌ها برایم اولویت دارد', typeA: 'T', typeB: 'F'),
+    MbtiQuestion(title: 'بخش سوم: تفکری (T) یا احساسی (F) - سوال ۲', optA: 'انتقاد صادقانه را به تعریف مؤدبانه ترجیح می‌دهم', optB: 'انتقاد، حتی اگر درست باشد، اگر بی‌ملاحظه باشد آزارم می‌دهد', typeA: 'T', typeB: 'F'),
+    MbtiQuestion(title: 'بخش سوم: تفکری (T) یا احساسی (F) - سوال ۳', optA: 'در تعارض، دنبال راه‌حل منطقی می‌گردم', optB: 'در تعارض، اول می‌خواهم احساسم شنیده شود', typeA: 'T', typeB: 'F'),
+    MbtiQuestion(title: 'بخش سوم: تفکری (T) یا احساسی (F) - سوال ۴', optA: '«عادلانه» بودن برایم مهم‌تر از «مهربانانه» بودن است', optB: '«مهربانانه» بودن برایم مهم‌تر از «عادلانه» بودن است', typeA: 'T', typeB: 'F'),
+    MbtiQuestion(title: 'بخش سوم: تفکری (T) یا احساسی (F) - سوال ۵', optA: 'می‌توانم تصمیم سختی بگیرم بدون اینکه احساساتم مانع شود', optB: 'تصمیم‌های سخت که به کسی آسیب می‌زند برایم دشوار است', typeA: 'T', typeB: 'F'),
+    MbtiQuestion(title: 'بخش سوم: تفکری (T) یا احساسی (F) - سوال ۶', optA: 'وقتی کسی مشکل دارد، اول راه‌حل پیشنهاد می‌دهم', optB: 'وقتی کسی مشکل دارد، اول گوش می‌دهم و همدلی می‌کنم', typeA: 'T', typeB: 'F'),
+    MbtiQuestion(title: 'بخش سوم: تفکری (T) یا احساسی (F) - سوال ۷', optA: 'از بحث‌های منطقی لذت می‌برم', optB: 'از بحث‌های پرتنش ناراحت می‌شوم', typeA: 'T', typeB: 'F'),
+    MbtiQuestion(title: 'بخش سوم: تفکری (T) یا احساسی (F) - سوال ۸', optA: '«درست» بودن برایم مهم‌تر از «محبوب» بودن است', optB: 'هماهنگی در گروه برایم مهم است', typeA: 'T', typeB: 'F'),
 
-    // بخش J vs P
-    MbtiQuestion(title: "در امور روزانه:", optionA: "برنامه‌ریزی دقیق، جدول زمانی و ددلاین‌ها را دوست دارم.", optionB: "انعطاف‌پذیری و جریان خودانگیخته را ترجیح می‌دهم.", typeA: "J", typeB: "P"),
-    MbtiQuestion(title: "قبل از سفر:", optionA: "همه چیز را رزرو کرده و برنامه مشخص می‌نویسم.", optionB: "بدون نقشه قبلی می‌روم تا در لحظه تصمیم بگیرم.", typeA: "J", typeB: "P"),
-    MbtiQuestion(title: "انجام کارها و تکالیف:", optionA: "خیلی زودتر از موعد تحویل تمام می‌کنم.", optionB: "در لحظات آخر و زیر فشار نهایی بهترین نتیجه را می‌گیرم.", typeA: "J", typeB: "P"),
-    MbtiQuestion(title: "نظم اتاق و میز کار شما:", optionA: "همیشه مرتب، سازمان‌یافته و در جای مشخص است.", optionB: "نظم خلاقانه در بی‌نظمی ظاهری وجود دارد.", typeA: "J", typeB: "P"),
-    MbtiQuestion(title: "پرونده‌ها و تصمیمات:", optionA: "سریعاً تصمیم نهایی را می‌گیرم و پرونده را می‌بندم.", optionB: "ترجیح می‌دهم گزینه‌ها باز بمانند تا اطلاعات جدید برسد.", typeA: "J", typeB: "P"),
-    MbtiQuestion(title: "سبک زندگی شما:", optionA: "ساختاریافته و همراه با چارچوب‌های تثبیت‌شده.", optionB: "تطبیق‌پذیر، غیرمنتظره و بازی‌گوشانه با رویدادها.", typeA: "J", typeB: "P"),
-    MbtiQuestion(title: "تغییر ناگهانی در برنامه‌ها:", optionA: "مرا کلافه و مضطرب می‌کند.", optionB: "به عنوان فرصتی جدید و هیجان‌انگیز از آن استقبال می‌کنم.", typeA: "J", typeB: "P"),
-    MbtiQuestion(title: "رضایت درونی شما از چیست؟", optionA: "تیک زدن و پایان دادن کامل به وظایف.", optionB: "شروع کاوش‌های نو و جریان تجربه اندوزی.", typeA: "J", typeB: "P"),
+    // بخش چهارم: J یا P
+    MbtiQuestion(title: 'بخش چهارم: قضاوتی (J) یا ادراکی (P) - سوال ۱', optA: 'برنامه‌ریزی قبلی به من آرامش می‌دهد', optB: 'برنامه‌ریزی سفت‌وسخت احساس محدودیت می‌دهد', typeA: 'J', typeB: 'P'),
+    MbtiQuestion(title: 'بخش چهارم: قضاوتی (J) یا ادراکی (P) - سوال ۲', optA: 'کارها را زودتر از موعد تمام می‌کنم', optB: 'اغلب در آخرین لحظه کارها را تمام می‌کنم', typeA: 'J', typeB: 'P'),
+    MbtiQuestion(title: 'بخش چهارم: قضاوتی (J) یا ادراکی (P) - سوال ۳', optA: 'تغییر برنامه در لحظه آخر آزارم می‌دهد', optB: 'تغییر برنامه در لحظه آخر هیجان‌انگیز است', typeA: 'J', typeB: 'P'),
+    MbtiQuestion(title: 'بخش چهارم: قضاوتی (J) یا ادراکی (P) - سوال ۴', optA: 'دوست دارم تصمیم‌ها گرفته شوند و کار تمام شود', optB: 'دوست دارم گزینه‌ها باز بمانند', typeA: 'J', typeB: 'P'),
+    MbtiQuestion(title: 'بخش چهارم: قضاوتی (J) یا ادراکی (P) - سوال ۵', optA: 'فهرست کارها و برنامه روزانه دارم', optB: 'فهرست کارها برایم محدودکننده است', typeA: 'J', typeB: 'P'),
+    MbtiQuestion(title: 'بخش چهارم: قضاوتی (J) یا ادراکی (P) - سوال ۶', optA: 'محیط نامرتب حواسم را پرت می‌کند', optB: 'می‌توانم در محیط نامرتب هم کار کنم', typeA: 'J', typeB: 'P'),
+    MbtiQuestion(title: 'بخش چهارم: قضاوتی (J) یا ادراکی (P) - سوال ۷', optA: 'ترجیح می‌دهم همه چیز مشخص و قطعی باشد', optB: 'با ابهام و عدم قطعیت راحتم', typeA: 'J', typeB: 'P'),
+    MbtiQuestion(title: 'بخش چهارم: قضاوتی (J) یا ادراکی (P) - سوال ۸', optA: 'وقتی کاری نیمه‌تمام است، ذهنم درگیر است', optB: 'می‌توانم چند کار نیمه‌تمام داشته باشم بدون استرس', typeA: 'J', typeB: 'P'),
   ];
 
-  final Map<String, Map<String, String>> _personalityDetails = {
-    'INTJ': {'title': 'معمار / استراتژیست', 'desc': 'متفکرانی مبتکر با انگیزه‌ای درونی برای اجرای ایده‌ها و رسیدن به هدف‌ها. تحلیل‌گر، مستقل و کمال‌گرا.'},
-    'INTP': {'title': 'اندیشمند / منطق‌دان', 'desc': 'جستجوگر تبیین‌های منطقی برای هر پدیده؛ تئوریکMbtiQuestion(title: "پرونده‌ها و تصمیمات:", optionA: "سریعاً تصمیم نهایی را می‌گیرم و پرونده را می‌بندم.", optionB: "ترجیح می‌دهم گزینه‌ها باز بمانند تا اطلاعات جدید برسد.", typeA: "J", typeB: "P"),
-    MbtiQuestion(title: "سبک زندگی شما:", optionA: "ساختاریافته و همراه با چارچوب‌های تثبیت‌شده.", optionB: "تطبیق‌پذیر، غیرمنتظره و بازی‌گوشانه با رویدادها.", typeA: "J", typeB: "P"),
-    MbtiQuestion(title: "تغییر ناگهانی در برنامه‌ها:", optionA: "مرا کلافه و مضطرب می‌کند.", optionB: "به عنوان فرصتی جدید و هیجان‌انگیز از آن استقبال می‌کنم.", typeA: "J", typeB: "P"),
-    MbtiQuestion(title: "رضایت درونی شما از چیست؟", optionA: "تیک زدن و پایان دادن کامل به وظایف.", optionB: "شروع کاوش‌های نو و جریان تجربه اندوزی.", typeA: "J", typeB: "P"),
-  ];
-
-  final Map<String, Map<String, String>> _personalityDetails = {
-    'INTJ': {'title': 'معمار / استراتژیست', 'desc': 'متفکرانی مبتکر با انگیزه‌ای درونی برای اجرای ایده‌ها و رسیدن به هدف‌ها. تحلیل‌گر، مستقل و کمال‌گرا.'},
-    'INTP': {'title': 'اندیشمند / منطق‌دان', 'desc': 'جستجوگر تبیین‌های منطقی برای هر پدیده؛ تئوریک، کنجکاو، دقیق و علاقه‌مند به مفاهیم محض.'},
-    'ENTJ': {'title': 'فرمانده / پیشرو', 'desc': 'رهبرانی قاطع، رک و سامان‌دهنده که سیستم‌ها و نیروها را برای تحقق مقاصد به خوبی سازماندهی می‌کنند.'},
-    'ENTP': {'title': 'مبتکر / مجادله‌گر', 'desc': 'سریع، زیرک، مشتاق مناظره، عاشق طرح احتملموس باور دارند.'},
-    'ESFJ': {'title': 'سفیر / مراقب', 'desc': 'خوش‌مشرب، خونگرم، وظیفه‌شناس و هماهنگ‌کننده جوامع انسانی با حساسیت نسبت به نیاز دیگران.'},
-    'ISTP': {'title': 'چیره‌دست / مکانیک', 'desc': 'ناظرانی تیزبین، خونسرد، مسلط بر ابزارها و اهل عمل که مسائل پیچیده فنی را در سکوت حل می‌کنند.'},
-    'ISFP': {'title': 'هنرمند / ماجراجو', 'desc': 'آرام، حساس، لذت‌برنده از لحظه حال، دارای درک زیباشناختی بسیار بالا و وفادار به باورها.'},
-    'ESTP': {'title': 'کارآفرین / پویا', 'desc': 'اهل ریسک، سریع در واکنش، عمل‌گرا، عاشق هیجان و مواجهه عملی با امور ملموس زندگی.'},
-    'ESFP': {'title': 'بازیگر / سرگرم‌کننده', 'desc': 'برون‌گرا، خودانگیخته، شاد و سرزنده که لذت حضور را به همگان هدیه می‌دهند.'},
+  static const Map<String, Map<String, String>> personalityDetails = {
+    'INFJ': {
+      'title': 'حامی و مشاور معنوی (The Advocate)',
+      'desc': 'شما فردی با بصیرت عمیق، آرمان‌گرا و سرشار از بینش معنوی هستید. ارتباط میان معانی پنهان عالم را به خوبی درک می‌کنید و همواره به دنبال هدایت، رشد و کمال دیگران می‌باشید. وجدان بیدار، سکوت پرمعنا و نگاه تعالی‌بخش از ویژگی‌های بارز شماست.'
+    },
+    'INTJ': {
+      'title': 'معمار و استراتژیست (The Architect)',
+      'desc': 'فکری نظام‌مند، نوآور و دوراندیش دارید. ساختارهای فکری پیچیده را به سادگی تحلیل می‌کنید و همواره در پی کمال‌بخشی به سیستم‌ها، برنامه‌ها و نظریه‌ها هستید. تصمیم‌گیری‌های شما مبتنی بر منطق محض و دوراندیشی عمیق است.'
+    },
+    'INFP': {
+      'title': 'میانجی و سالک آرمان‌گرا (The Mediator)',
+      'desc': 'شخصیتی لطیف، متفکر و پایبند به ارزش‌های عمیق درونی دارید. به دنبال اصالت، خلوص نیت و زیبایی‌های معنوی هستید. زبان هنر، شعر و تفکر عمیق را به نیکی می‌فهمید و همواره با مهربانی و درک بالا با دیگران تعامل می‌کنید.'
+    },
+    'INTP': {
+      'title': 'متفکر و پژوهشگر حقیقت (The Logician)',
+      'desc': 'عاشق کاوش در نظریه‌ها، کشف قوانین حاکم بر هستی و حل مسائل فلسفی و منطقی هستید. ذهنی تحلیل‌گر، مستقل و نقاد دارید و از کشف ارتباط میان مفاهیم نوظهور و ناشناخته عمیقاً لذت می‌برید.'
+    },
+    'ENFJ': {
+      'title': 'راهنما و مربی الهام‌بخش (The Protagonist)',
+      'desc': 'رهبری پرجاذبه، دلسوز و آرمان‌خواه هستید. استعداد شگرفی در برانگیختن انگیزه‌های معنوی و انسانی در دیگران دارید و با شور و اشتیاق وافر برای ساختن جامعه‌ای بهتر و رشددهنده‌تر تلاش می‌کنید.'
+    },
+    'ENTJ': {
+      'title': 'فرمانده و مدیر راهبردی (The Commander)',
+      'desc': 'شخصیتی قاطع، مقتدر و سازمان‌دهنده دارید. نگاه کلان، توانایی در ترسیم اهداف بلندمدت و بسیج امکانات برای دستیابی به مقاصد بزرگ از صفات متمایز شماست. با صلابت بر موانع غلبه می‌کنید.'
+    },
+    'ENFP': {
+      'title': 'پیک الهام و مشتاق اندیشه (The Campaigner)',
+      'desc': 'پر از شور و شوق، خلاقیت و دیدگاه‌های بدیع هستید. روابط انسانی گرم و پرمحبتی برقرار می‌کنید و در هر موقعیتی، امکانات نو و افق‌های امیدبخش را مشاهده و به اطرافیان منتقل می‌نمایید.'
+    },
+    'ENTP': {
+      'title': 'مناظره‌گر و نوآور پویا (The Debater)',
+      'desc': 'فکری پویا، چابک و سرشار از شوخ‌طبعی و نبوغ دارید. از به چالش کشیدن باورهای سنتی و رسیدن به افق‌های جدید لذت می‌برید و در بحث‌های منطقی و اقناعی بسیار توانمندید.'
+    },
+    'ISFJ': {
+      'title': 'مدافع و خادم فداکار (The Protector)',
+      'desc': 'بسیار صبور، باوفا، خدمت‌گزار و مبادی آداب هستید. با آرامش و اخلاص کامل، بدون هیچ چشم‌داشتی به یاری اطرافیان می‌شتابید و در صیانت از ارزش‌ها و سنت‌های نیکو ثبات قدم دارید.'
+    },
+    'ISTJ': {
+      'title': 'بازرس و امین وظیفه‌شناس (The Inspector)',
+      'desc': 'شخصیتی منظم، واقع‌بین، مسئولیت‌پذیر و پایبند به انضباط هستید. دقت بالا در انجام تکالیف، رعایت امانت و اهتمام به جزئیات و حقایق ملموس، شما را به تکیه‌گاهی مطمئن تبدیل کرده است.'
+    },
+    'ESFJ': {
+      'title': 'سفیر مهر و حامی جامعه (The Caregiver)',
+      'desc': 'کانون گرمی، محبت و هماهنگی در جمع هستید. خدمت به اهل منزل و یاران، حفظ پیوندهای اجتماعی و مراقبت از سلامت روحی دیگران، اولویت نخست زندگی شما به شمار می‌رود.'
+    },
+    'ESTJ': {
+      'title': 'ناظر و مدیر نظم‌آفرین (The Executive)',
+      'desc': 'منظم، واقع‌گرا، صریح و سخت‌کوش هستید. در مدیریت منابع، ساماندهی امور روزمره و برقراری رویه‌های عادلانه و ساختاریافته استادی تمام‌عیار به شمار می‌روید.'
+    },
+    'ISFP': {
+      'title': 'هنرمند و کاوشگر زیبایی (The Adventurer)',
+      'desc': 'روحی لطیف، متواضع و سرشار از درک زیبایی‌ها دارید. بی سر و صدا در پی کسب تجارب اصیل و ارزشمند در زندگی هستید و آرامش و صفای درون را بر هر تعارض و هیاهویی ترجیح می‌دهید.'
+    },
+    'ISTP': {
+      'title': 'صنعتگر و چیره‌دست کاردان (The Virtuoso)',
+      'desc': 'فردی عمل‌گرا، تحلیل‌گر، ماهر و خونسرد در بحران‌ها هستید. با ابزارها و سازوکارهای عینی به خوبی ارتباط برقرار می‌کنید و مسائل را با راه‌حل‌های عملی و منطقی رفع می‌نمایید.'
+    },
+    'ESFP': {
+      'title': 'شادی‌آفرین و پیام‌آور سرزندگی (The Entertainer)',
+      'desc': 'پر از نشاط، شادابی، ذوق زیستن و بخشش هستید. با حضور خود صفا و تحرک به مجالس می‌بخشید و از لحظه لحظه زندگی و نعمت‌های موجود در آن شکرگزارانه بهره می‌برید.'
+    },
+    'ESTP': {
+      'title': 'کارآفرین و پیشگام باصلابت (The Entrepreneur)',
+      'desc': 'شجاع، واقع‌گرا، اهل اقدام صریح و تصمیم‌گیری سریع هستید. از پذیرش چالش‌ها و مواجهه مستقیم با واقعیت‌های متغیر هراسی ندارید و با هوشمندی فرصت‌ها را شکار می‌کنید.'
+    },
   };
 
   void _calculateResult() {
-    int e = 0, i = 0, s = 0, n = 0, t = 0, f = 0, j = 0, p = 0;
+    int countE = 0, countI = 0;
+    int countS = 0, countN = 0;
+    int countT = 0, countF = 0;
+    int countJ = 0, countP = 0;
 
-    _answers.forEach((index, ans) {
-      if (ans == 'E') e++;
-      if (ans == 'I') i++;
-      if (ans == 'S') s++;
-      if (ans == 'N') n++;
-      if (ans == 'T') t++;
-      if (ans == 'F') f++;
-      if (ans == 'J') j++;
-      if (ans == 'P') p++;
-    });
+    for (int i = 0; i < 8; i++) {
+      if (_answers[i] == 'E') countE++;
+      if (_answers[i] == 'I') countI++;
+    }
+    for (int i = 8; i < 16; i++) {
+      if (_answers[i] == 'S') countS++;
+      if (_answers[i] == 'N') countN++;
+    }
+    for (int i = 16; i < 24; i++) {
+      if (_answers[i] == 'T') countT++;
+      if (_answers[i] == 'F') countF++;
+    }
+    for (int i = 24; i < 32; i++) {
+      if (_answers[i] == 'J') countJ++;
+      if (_answers[i] == 'P') countP++;
+    }
 
-    String type = '';
-    type += (e >= i) ? 'E' : 'I';
-    type += (s >= n) ? 'S' : 'N';
-    type += (t >= f) ? 'T' : 'F';
-    type += (j >= p) ? 'J' : 'P';
+    final String res = (countE >= countI ? 'E' : 'I') +
+        (countS >= countN ? 'S' : 'N') +
+        (countT >= countF ? 'T' : 'F') +
+        (countJ >= countP ? 'J' : 'P');
 
     setState(() {
-      _finalResult = type;
+      _calculatedType = res;
+      _showResult = true;
+    });
+  }
+
+  void _resetQuiz() {
+    setState(() {
+      _answers.clear();
+      _showResult = false;
+      _calculatedType = '';
     });
   }
 
   @override
   Widget build(BuildContext context) {
-    if (_finalResult != null) {
-      final info = _personalityDetails[_finalResult] ?? {'title': 'نامشخص', 'desc': ''};
-      return Center(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF27293D),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: const Color(0xFFFF6B4A), width: 2),
-                ),
-                child: Column(
-                  children: [
-                    const Text('نتیجه سنخ‌شناسی شخصیتی شما', style: TextStyle(fontSize: 14, color: Colors.white70)),
-                    const SizedBox(height: 10),
-                    Text(
-                      _finalResult!,
-                      style: const TextStyle(fontSize: 40, fontWeight: FontWeight.bold, color: Color(0xFFFF6B4A)),
-                    ),
-                    Text(
-                      info['title']!,
-                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF38BDF8)),
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      info['desc']!,
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(fontSize: 13.5, height: 1.6, color: Colors.white),
-                    ),
-                  ],
-                ),
+    if (_showResult) {
+      final details = personalityDetails[_calculatedType] ?? {
+        'title': 'تیپ شخصیتی $_calculatedType',
+        'desc': 'توضیحات تکمیلی برای این تیپ ثبت شده است.'
+      };
+
+      return SingleChildScrollView(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: const Color(0xFF133B4F),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: const Color(0xFF1ABC9C), width: 1.5),
               ),
-              const SizedBox(height: 24),
-              ElevatedButton.icon(
-                style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFFF6B4A)),
-                icon: const Icon(Icons.refresh, color: Colors.white),
-                label: const Text('پاسخ‌گویی مجدد', style: TextStyle(color: Colors.white)),
-                onPressed: () {
-                  setState(() {
-                    _answers.clear();
-                    _finalResult = null;
-                  });
-                },
+              child: Column(
+                children: [
+                  const Icon(Icons.stars_rounded, color: Color(0xFF1ABC9C), size: 60),
+                  const SizedBox(height: 12),
+                  const Text('نتیجه ارزیابی شخصیت شما',
+                      style: TextStyle(color: Colors.white70, fontSize: 14)),
+                  const SizedBox(height: 6),
+                  Text(
+                    _calculatedType,
+                    style: const TextStyle(
+                        color: Color(0xFF1ABC9C),
+                        fontSize: 34,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 2),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    details['title']!,
+                    style: const TextStyle(
+                        color: Colors.white, fontSize: 17, fontWeight: FontWeight.bold),
+                    textAlign: TextAlign.center,
+                  ),
+                  const Divider(color: Colors.white24, height: 28),
+                  Text(
+                    details['desc']!,
+                    style: const TextStyle(
+                        color: Colors.white70, fontSize: 14.5, height: 1.8),
+                    textAlign: TextAlign.justify,
+                  ),
+                ],
               ),
-            ],
-          ),
+            ),
+            const SizedBox(height: 24),
+            SizedBox(
+              width: double.infinity,
+              height: 48,
+              child: ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF1ABC9C),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                ),
+                onPressed: _resetQuiz,
+                icon: const Icon(Icons.refresh_rounded, color: Colors.white),
+                label: const Text('آزمون مجدد',
+                    style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold)),
+              ),
+            ),
+          ],
         ),
       );
     }
 
+    final int answeredCount = _answers.length;
+    final double progress = answeredCount / questions.length;
+
     return Column(
       children: [
-        LinearProgressIndicator(
-          value: _answers.length / _questions.length,
-          backgroundColor: const Color(0xFF27293D),
-          color: const Color(0xFFFF6B4A),
-        ),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        Container(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+          color: const Color(0xFF0F3244),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('آزمون خودارزیابی سنخ شخصیتی (MBTI)', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold)),
-              Text('${_answers.length} از ${_questions.length}', style: const TextStyle(fontSize: 12, color: Color(0xFFFF6B4A))),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    'آزمون خودارزیابی MBTI (نسخه فارسی)',
+                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+                  ),
+                  Text(
+                    '$answeredCount از ۳۲ پاسخ داده شده',
+                    style: const TextStyle(color: Color(0xFF1ABC9C), fontSize: 12.5),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(6),
+                child: LinearProgressIndicator(
+                  value: progress,
+                  minHeight: 7,
+                  backgroundColor: Colors.white12,
+                  color: const Color(0xFF1ABC9C),
+                ),
+              ),
             ],
           ),
         ),
         Expanded(
           child: ListView.builder(
             padding: const EdgeInsets.all(12),
-            itemCount: _questions.length,
-            itemBuilder: (ctx, idx) {
-              final q = _questions[idx];
-              final selected = _answers[idx];
+            itemCount: questions.length,
+            itemBuilder: (context, index) {
+              final q = questions[index];
+              final currentAns = _answers[index];
 
               return Card(
-                color: const Color(0xFF27293D),
+                color: const Color(0xFF133B4F),
                 margin: const EdgeInsets.only(bottom: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  side: BorderSide(
+                    color: currentAns != null ? const Color(0xFF1ABC9C).withOpacity(0.5) : Colors.transparent,
+                    width: 1,
+                  ),
+                ),
                 child: Padding(
-                  padding: const EdgeInsets.all(12.0),
+                  padding: const EdgeInsets.all(12),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('${idx + 1}. ${q.title}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                      const SizedBox(height: 8),
-                      RadioListTile<String>(
-                        value: q.typeA,
-                        groupValue: selected,
-                        activeColor: const Color(0xFFFF6B4A),
-                        title: Text(q.optionA, style: const TextStyle(fontSize: 12)),
-                        onChanged: (val) => setState(() => _answers[idx] = val!),
+                      Text(
+                        q.title,
+                        style: const TextStyle(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.bold),
                       ),
-                      RadioListTile<String>(
-                        value: q.typeB,
-                        groupValue: selected,
-                        activeColor: const Color(0xFFFF6B4A),
-                        title: Text(q.optionB, style: const TextStyle(fontSize: 12)),
-                        onChanged: (val) => setState(() => _answers[idx] = val!),
+                      const SizedBox(height: 10),
+                      InkWell(
+                        onTap: () {
+                          setState(() {
+                            _answers[index] = q.typeA;
+                          });
+                        },
+                        borderRadius: BorderRadius.circular(8),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+                          decoration: BoxDecoration(
+                            color: currentAns == q.typeA ? const Color(0xFF1ABC9C).withOpacity(0.2) : Colors.black12,
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(
+                              color: currentAns == q.typeA ? const Color(0xFF1ABC9C) : Colors.white10,
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(
+                                currentAns == q.typeA ? Icons.radio_button_checked : Icons.radio_button_off,
+                                color: currentAns == q.typeA ? const Color(0xFF1ABC9C) : Colors.white38,
+                                size: 18,
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  q.optA,
+                                  style: TextStyle(
+                                    color: currentAns == q.typeA ? Colors.white : Colors.white70,
+                                    fontSize: 13.5,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      InkWell(
+                        onTap: () {
+                          setState(() {
+                            _answers[index] = q.typeB;
+                          });
+                        },
+                        borderRadius: BorderRadius.circular(8),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+                          decoration: BoxDecoration(
+                            color: currentAns == q.typeB ? const Color(0xFF1ABC9C).withOpacity(0.2) : Colors.black12,
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(
+                              color: currentAns == q.typeB ? const Color(0xFF1ABC9C) : Colors.white10,
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(
+                                currentAns == q.typeB ? Icons.radio_button_checked : Icons.radio_button_off,
+                                color: currentAns == q.typeB ? const Color(0xFF1ABC9C) : Colors.white38,
+                                size: 18,
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  q.optB,
+                                  style: TextStyle(
+                                    color: currentAns == q.typeB ? Colors.white : Colors.white70,
+                                    fontSize: 13.5,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
                       ),
                     ],
                   ),
@@ -1540,18 +1713,22 @@ class _MbtiQuizScreenState extends State<MbtiQuizScreen> {
             },
           ),
         ),
-        Padding(
-          padding: const EdgeInsets.all(12.0),
+        Container(
+          padding: const EdgeInsets.all(12),
+          color: const Color(0xFF0F3244),
           child: SizedBox(
             width: double.infinity,
-            height: 48,
+            height: 46,
             child: ElevatedButton(
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFFF6B4A),
-                disabledBackgroundColor: Colors.white24,
+                backgroundColor: answeredCount == 32 ? const Color(0xFF1ABC9C) : Colors.grey.shade700,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
               ),
-              onPressed: _answers.length == _questions.length ? _calculateResult : null,
-              child: const Text('مشاهده تحلیل شخصیت', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+              onPressed: answeredCount == 32 ? _calculateResult : null,
+              child: Text(
+                answeredCount == 32 ? 'مشاهده نتیجه تیپ شخصیتی' : 'پاسخ به همه سوالات (${32 - answeredCount} مانده)',
+                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+              ),
             ),
           ),
         ),
