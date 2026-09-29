@@ -153,7 +153,7 @@ class _SplashScreenState extends State<SplashScreen> {
             ),
             SizedBox(height: 10),
             Text(
-              'اندیشه، دانایی و رشد فردی',
+              'تلاقی اندیشه، معرفت و پویایی',
               style: TextStyle(fontSize: 14, color: Colors.white70),
             ),
             SizedBox(height: 35),
