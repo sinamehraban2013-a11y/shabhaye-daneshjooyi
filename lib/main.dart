@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
-
 import 'package:audioplayers/audioplayers.dart';
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:flutter/material.dart';
@@ -13,6 +12,9 @@ import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:syncfusion_flutter_pdfviewer/pdfviewer.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:timezone/data/latest_all.dart' as tz;
+import 'package:timezone/timezone.dart' as tz;
 
 // ==========================================
 // تنظیمات و شناسه‌های گوگل‌درایو و اسکریپت‌ها
@@ -43,8 +45,74 @@ const List<String> deepThoughtsQuotes = [
 " فاطمه‌ی زهرا سلام‌الله‌علیها بهترین دست‌خط زیبای خداوند در ترسیم چهره‌ی زن است."
 ];
 
+// ۷ جمله انگیزشی و ترغیب‌کننده برای روزهای هفته
+const List<String> dailyMotivationMessages = [
+  'امروز روزی شما در نرم‌افزار «شب‌های دانشجویی» آماده است؛ حتماً یک سر بزنید! ✨',
+  'یک جرعه فکر عمیق برای آرامش امروز شما؛ سخنرانی جدید را از دست ندهید. 🎧',
+  'چند دقیقه تأمل، یک دنیا آگاهی؛ کتابخانه تخصصی شب‌های دانشجویی منتظر شماست. 📚',
+  'امروز با یک نکته ناب معرفتی همراه ما باشید؛ روزیِ امروزتان را دریافت کنید. 🌟',
+  'فرصتی کوتاه برای اندیشیدن؛ مقالات و مباحث صوتی این هفته را شنیده‌اید؟ 💡',
+  'همراه با جمع اندیشه‌ورزان؛ محتوای جدید کانال فکر عمیق در اپلیکیشن بارگذاری شد. 🌿',
+  'روزی معنوی و فکری امروز شما آماده است؛ همین حالا نرم‌افزار را باز کنید. 📖',
+];
+
+final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
+
+Future<void> setupDailyNotifications() async {
+  tz.initializeTimeZones();
+  // تنظیم به منطقه زمانی ایران
+  try {
+    tz.setLocalLocation(tz.getLocation('Asia/Tehran'));
+  } catch (_) {}
+
+  const AndroidInitializationSettings initializationSettingsAndroid =
+      AndroidInitializationSettings('@mipmap/ic_launcher');
+
+  const InitializationSettings initializationSettings =
+      InitializationSettings(android: initializationSettingsAndroid);
+
+  await flutterLocalNotificationsPlugin.initialize(initializationSettings);
+
+  // درخواست مجوز نوتیفیکیشن در اندروید ۱۳ به بالا
+  final androidPlugin = flutterLocalNotificationsPlugin
+      .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
+  await androidPlugin?.requestNotificationsPermission();
+
+  // تنظیم زمان‌بندی برای ساعت ۱۷:۰۰ در ۷ روز متوالی
+  for (int i = 0; i < 7; i++) {
+    final now = tz.TZDateTime.now(tz.local);
+    var scheduledDate = tz.TZDateTime(tz.local, now.year, now.month, now.day, 17, 0).add(Duration(days: i));
+    
+    // اگر ساعت ۱۷ امروز گذشته باشد، از فردا شروع شود
+    if (scheduledDate.isBefore(now)) {
+      scheduledDate = scheduledDate.add(const Duration(days: 1));
+    }
+
+    await flutterLocalNotificationsPlugin.zonedSchedule(
+      i + 100, // شناسه یونیک نوتیفیکیشن
+      'شب‌های دانشجویی ✨',
+      dailyMotivationMessages[i],
+      scheduledDate,
+      const NotificationDetails(
+        android: AndroidNotificationDetails(
+          'daily_reminder_channel',
+          'یادآور روزانه شب‌های دانشجویی',
+          channelDescription: 'نمایش روزی و یادآور روزانه ساعت ۱۷',
+          importance: Importance.high,
+          priority: Priority.high,
+        ),
+      ),
+      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+      uiLocalNotificationDateInterpretation:
+          UILocalNotificationDateInterpretation.absoluteTime,
+      matchDateTimeComponents: DateTimeComponents.dayOfWeekAndTime, // تکرار هفتگی دقیق
+    );
+  }
+}
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await setupDailyNotifications(); // فعال‌سازی اعلان روزانه ساعت ۱۷
   runApp(const ShabHayeDaneshjouyiApp());
 }
 
