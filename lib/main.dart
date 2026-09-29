@@ -1272,6 +1272,58 @@ void _showFeedbackDialog() {
       ),
     );
   }
+   void _showSnackBar(String message, {bool isError = false}) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message, textAlign: TextAlign.right),
+        backgroundColor: isError ? Colors.red.shade700 : Colors.teal.shade800,
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
+  void _markAsRead(String id) async {
+    if (!_readItemIds.contains(id)) {
+      setState(() {
+        _readItemIds.add(id);
+      });
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setStringList('read_items', _readItemIds);
+    }
+  }
+
+  Future<void> _launchURL(String urlString) async {
+    // در صورت نیاز به باز کردن لینک خارجی
+    _showSnackBar('در حال انتقال: $urlString');
+  }
+
+  void _openEitaaChannel() {
+    _launchURL('https://eitaa.com/shabhaye_daneshjooyi');
+  }
+
+  void _showAboutDialog() {
+    showDialog(
+      context: context,
+      builder: (ctx) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: const Text('درباره برنامه'),
+          content: const Text(
+            'اپلیکیشن شب‌های دانشجویی\nگردآوری بیانات و آثار استاد شیروی\nنسخه ۱.۰.۰',
+            style: TextStyle(height: 1.6),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('بستن'),
+            ),
+          ],
+        ),
+      ),
+    );
+  } 
 }
 
 // ==========================================
