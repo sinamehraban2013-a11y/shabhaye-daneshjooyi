@@ -564,16 +564,17 @@ class _HomeScreenState extends State<HomeScreen> {
     );
 
     try {
-      final response = await http.get(Uri.parse(item.downloadUrl));
-      Navigator.pop(context); // بستن لودینگ
+final downloadUrl = 'https://docs.google.com/uc?export=download&id=${item.id}';
+      final response = await http.get(Uri.parse(downloadUrl));
+      if (mounted) Navigator.pop(context);
 
       if (response.statusCode == 200) {
         final dir = await getApplicationDocumentsDirectory();
-        String safeName = item.name.replaceAll('.bin', '');
+        final safeName = item.name.replaceAll(RegExp(r'\.bin$', caseSensitive: false), '');
         final file = File('${dir.path}/$safeName');
-        await file.writeAsBytes(response.bytes);
+        await file.writeAsBytes(response.bodyBytes);
 
-        await _markAsRead(item.id);
+        _markAsRead(item.id);
 
         if (!mounted) return;
 
@@ -1063,6 +1064,7 @@ void _showFeedbackDialog() {
               _buildMenuSheetItem(
                 icon: Icons.help_outline,
                 title: 'راهنما',
+                subtitle: 'راهنمای کار با برنامه',
                 onTap: () {
                   Navigator.pop(ctx);
                   _showHelpDialog();
@@ -1071,6 +1073,7 @@ void _showFeedbackDialog() {
               _buildMenuSheetItem(
                 icon: Icons.feedback_outlined,
                 title: 'ارسال نظر و بازخورد',
+                subtitle: 'نظرات و پیشنهادات شما',
                 onTap: () {
                   Navigator.pop(ctx);
                   _showFeedbackDialog();
@@ -1271,7 +1274,47 @@ void _showFeedbackDialog() {
         },
       ),
     );
+  Future<void> _openEitaaChannel({required String appUrl, required String webUrl}) async {
+    final appUri = Uri.parse(appUrl);
+    final webUri = Uri.parse(webUrl);
+
+    try {
+      if (await canLaunchUrl(appUri)) {
+        await launchUrl(appUri, mode: LaunchMode.externalApplication);
+      } else if (await canLaunchUrl(webUri)) {
+        await launchUrl(webUri, mode: LaunchMode.externalApplication);
+      } else {
+        _showSnackBar('امکان باز کردن کانال ایتا وجود ندارد.');
+      }
+    } catch (e) {
+      if (await canLaunchUrl(webUri)) {
+        await launchUrl(webUri, mode: LaunchMode.externalApplication);
+      } else {
+        _showSnackBar('خطا در باز کردن پیوند');
+      }
+    }
   }
+
+  void _markAsRead(String id) async {
+    setState(() {
+      _readItemIds.add(id);
+    });
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setStringList('read_items', _readItemIds.toList());
+    } catch (_) {}
+  }
+
+  void _showSnackBar(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message, textAlign: TextAlign.right, style: const TextStyle(fontFamily: 'Vazirmatn')),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+    
    void _showSnackBar(String message, {bool isError = false}) {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
