@@ -719,47 +719,263 @@ class _QuoteMarqueeState extends State<QuoteMarquee> {
   }
 
   // مورد ۶: منوی سه نقطه به صورت Bottom Sheet
-  void _showCustomBottomSheetMenu() {
+لینکها و طراحی منوی سه نقطه : // 
+  void _showContactDialog() {
+    final TextEditingController textController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (ctx) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: const Text('ارتباط با ما', textAlign: TextAlign.center, style: TextStyle(fontWeight: FontWeight.bold)),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const Text('نظرات، پیشنهادات و انتقادات خود را برای ما نوشته و ارسال کنید:'),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: textController,
+                  maxLines: 4,
+                  textDirection: TextDirection.rtl,
+                  decoration: const InputDecoration(
+                    hintText: 'متن پیام شما...',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('انصراف'),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF00897B),
+                foregroundColor: Colors.white,
+              ),
+              onPressed: () async {
+                final message = textController.text.trim();
+                if (message.isEmpty) return;
+
+                final Uri emailUri = Uri(
+                  scheme: 'mailto',
+                  path: 'm_khozani@yahoo.com',
+                  queryParameters: {
+                    'subject': 'نظر کاربر در بازی پازل',
+                    'body': message,
+                  },
+                );
+
+                Navigator.pop(ctx);
+                await _launchURL(emailUri.toString());
+              },
+              child: const Text('ارسال'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // تابع ساخت کارت‌های زیبای منو با طراحی اختصاصی
+  Widget _buildMenuSheetItem({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required VoidCallback onTap,
+    Color iconColor = const Color(0xFF6B4226),
+    Color iconBgColor = const Color(0xFFF5EBE1),
+  }) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Material(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(14),
+          onTap: onTap,
+          child: Container(
+            padding: const EdgeInsets.symmetric(vertical: 11, horizontal: 14),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: const Color(0xFFEADBCE), width: 1),
+            ),
+            child: Row(
+              textDirection: TextDirection.rtl,
+              children: [
+                CircleAvatar(
+                  radius: 20,
+                  backgroundColor: iconBgColor,
+                  child: Icon(icon, color: iconColor, size: 22),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        textAlign: TextAlign.right,
+                        style: const TextStyle(
+                          color: Color(0xFF4A2810),
+                          fontSize: 13.5,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        subtitle,
+                        textAlign: TextAlign.right,
+                        style: const TextStyle(
+                          color: Color(0xFF8D6E63),
+                          fontSize: 11.5,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const Icon(
+                  Icons.arrow_back_ios_new_rounded,
+                  size: 14,
+                  color: Color(0xFFBCAAA4),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // نمایش منوی کشویی پایین
+  void _showMoreMenuSheet() {
     showModalBottomSheet(
       context: context,
-      backgroundColor: const Color(0xFF27293D),
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (ctx) => Padding(
-        padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              leading: const Icon(Icons.info_outline, color: Color(0xFFFF6B4A)),
-              title: const Text('درباره ما'),
-              onTap: () {
-                Navigator.pop(ctx);
-                _showAboutDialog();
-              },
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        return Container(
+          decoration: const BoxDecoration(
+            color: Color(0xFFFFF7ED), // پس‌زمینه کرم گرم و چشم‌نواز
+            borderRadius: BorderRadius.only(
+              topLeft: Radius.circular(24),
+              topRight: Radius.circular(24),
             ),
-            ListTile(
-              leading: const Icon(Icons.language, color: Color(0xFF38BDF8)),
-              title: const Text('وبسایت رسمی (shiravi.org)'),
-              onTap: () {
-                Navigator.pop(ctx);
-                _launchExternal('http://shiravi.org');
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.send, color: Colors.greenAccent),
-              title: const Text('کانال ایتا'),
-              onTap: () {
-                Navigator.pop(ctx);
-                _launchExternal('https://eitaa. [
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFFF6B4A)),
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('بستن', style: TextStyle(color: Colors.white)),
           ),
-        ],
-      ),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+          child: SafeArea(
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // دستگیره بالای منو
+                  Container(
+                    width: 44,
+                    height: 4,
+                    margin: const EdgeInsets.only(bottom: 14),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF6B4226).withOpacity(0.3),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                  _buildMenuSheetItem(
+                    icon: Icons.info_outline_rounded,
+                    title: 'درباره‌ی ما',
+                    subtitle: 'با ما بیشتر آشنا شوید',
+                    iconColor: const Color(0xFF6B4226),
+                    iconBgColor: const Color(0xFFF3E7DC),
+                    onTap: () {
+                      Navigator.pop(ctx);
+                      _showAboutDialog();
+                    },
+                  ),
+                  _buildMenuSheetItem(
+                    icon: Icons.send_rounded,
+                    title: 'کانال هزاران فکر عمیق دکتر شیروی',
+                    subtitle: 'کلیک کنید، سپس روی دکمه‌ی پیوستن بزنید',
+                    iconColor: const Color(0xFFFF8A00),
+                    iconBgColor: const Color(0xFFFFF0DC),
+                    onTap: () {
+                      Navigator.pop(ctx);
+                      _openEitaaChannel(
+                        webUrl: 'https://eitaa.com/shiravi_ir',
+                        appUrl: 'eitaa://shiravi_ir',
+                      );
+                    },
+                  ),
+                  _buildMenuSheetItem(
+                    icon: Icons.question_answer_rounded,
+                    title: 'گروه پاسخ به پرسش‌های سخت دکتر شیروی',
+                    subtitle: 'کلیک کنید، سپس عضو گروه شوید',
+                    iconColor: const Color(0xFF00897B),
+                    iconBgColor: const Color(0xFFE0F2F1),
+                    onTap: () {
+                      Navigator.pop(ctx);
+                      _launchURL('https://ble.ir/join/NGMyZGI5OT');
+                    },
+                  ),
+                  _buildMenuSheetItem(
+                    icon: Icons.menu_book_rounded,
+                    title: 'کانال بروزترین مقالات فرهنگی و آموزشی',
+                    subtitle: 'کلیک کنید، سپس روی دکمه‌ی پیوستن بزنید',
+                    iconColor: const Color(0xFF2E7D32),
+                    iconBgColor: const Color(0xFFE8F5E9),
+                    onTap: () {
+                      Navigator.pop(ctx);
+                      _openEitaaChannel(
+                        webUrl: 'https://eitaa.com/maghaleh_shiravi',
+                        appUrl: 'eitaa://maghaleh_shiravi',
+                      );
+                    },
+                  ),
+                  _buildMenuSheetItem(
+                    icon: Icons.auto_stories_rounded,
+                    title: 'کانال جدیدترین کتب تالیفیِ گروه محفل اُنس',
+                    subtitle: 'کلیک کنید، سپس روی دکمه‌ی پیوستن بزنید',
+                    iconColor: const Color(0xFF8E24AA),
+                    iconBgColor: const Color(0xFFF3E5F5),
+                    onTap: () {
+                      Navigator.pop(ctx);
+                      _openEitaaChannel(
+                        webUrl: 'https://eitaa.com/ketab_shiravi',
+                        appUrl: 'eitaa://ketab_shiravi',
+                      );
+                    },
+                  ),
+                  _buildMenuSheetItem(
+                    icon: Icons.language_rounded,
+                    title: 'سایت رسمی استاد دکتر شیروی',
+                    subtitle: 'به دنیایی از هزاران شگفتی وارد شوید',
+                    iconColor: const Color(0xFF0288D1),
+                    iconBgColor: const Color(0xFFE1F5FE),
+                    onTap: () {
+                      Navigator.pop(ctx);
+                      _launchURL('https://www.shiravi.org');
+                    },
+                  ),
+                  _buildMenuSheetItem(
+                    icon: Icons.mail_outline_rounded,
+                    title: 'ارتباط با ما',
+                    subtitle: 'ارسال پیشنهادات و نظرات شما از طریق ایمیل',
+                    iconColor: const Color(0xFFE65100),
+                    iconBgColor: const Color(0xFFFFE0B2),
+                    onTap: () {
+                      Navigator.pop(ctx);
+                      _showContactDialog();
+                    },
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 
