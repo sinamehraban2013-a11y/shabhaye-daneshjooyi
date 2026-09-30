@@ -1366,22 +1366,47 @@ void _showFeedbackDialog() {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),
-          title: const Text(
-            'درباره برنامه',
-            style: TextStyle(fontFamily: 'Vazirmatn', fontWeight: FontWeight.bold),
+          title: const Center(
+            child: Text(
+              'درباره برنامه',
+              style: TextStyle(
+                fontFamily: 'Vazirmatn',
+                fontWeight: FontWeight.bold,
+                fontSize: 18,
+              ),
+            ),
           ),
           content: const Text(
             'این نرم‌افزار حاصل ایده‌پردازی و کوشش جوانان هنرمندی است که در پاسخ به ندای رهبر شهید انقلاب و در راستای ایجاد تمدن ایرانی-اسلامی، با تلاشی مخلصانه و خلاقانه، جهاد تبیین را شروع کرده‌اند. امیدواریم با هدایت اهل فن و حمایت شما، بتوانیم محصولاتی جذاب، فرهنگی و مفید برای شما فراهم کنیم. به دعای خیر شما و حمایت‌هایتان محتاجیم.\n'
             'با ما در شبکه‌های اجتماعی در ارتباط باشید.\n'
             'اللهم عجل لولیک الفرج',
-            style: TextStyle(fontFamily: 'Vazirmatn', height: 1.8),
+            textAlign: TextAlign.justify,
+            style: TextStyle(fontFamily: 'Vazirmatn', height: 1.8, fontSize: 13.5),
           ),
+          actionsAlignment: MainAxisAlignment.center,
+          actionsPadding: const EdgeInsets.only(bottom: 16, top: 4),
           actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: const Text(
-                'بستن',
-                style: TextStyle(fontFamily: 'Vazirmatn'),
+            SizedBox(
+              width: 120,
+              height: 40,
+              child: ElevatedButton(
+                onPressed: () => Navigator.pop(ctx),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF6B4226),
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  elevation: 1,
+                ),
+                child: const Text(
+                  'بستن',
+                  style: TextStyle(
+                    fontFamily: 'Vazirmatn',
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                  ),
+                ),
               ),
             ),
           ],
@@ -1389,7 +1414,6 @@ void _showFeedbackDialog() {
       ),
     );
   }
-}
 
 // ==========================================
 // صفحه پخش صوت (Audio Player)
