@@ -33,7 +33,7 @@ jobs:
         run: |
           set -e
 
-          # انتخاب pubspec نهایی در صورت وجود؛ در غیر این صورت فایل استاندارد
+          # 1. کپی فایل pubspec
           if [ -f "pubspec-(4).yaml" ]; then
             echo "Copying pubspec-(4).yaml..."
             cp "pubspec-(4).yaml" "app_build/pubspec.yaml"
@@ -46,7 +46,7 @@ jobs:
             exit 1
           fi
 
-          # انتخاب main نهایی در صورت وجود؛ در غیر این صورت فایل استاندارد
+          # 2. کپی فایل main.dart
           if [ -f "main-(4).dart" ]; then
             echo "Copying main-(4).dart..."
             cp "main-(4).dart" "app_build/lib/main.dart"
@@ -62,7 +62,7 @@ jobs:
             exit 1
           fi
 
-          # ساخت پوشهٔ assets و کپی لوگو
+          # 3. ساخت پوشه assets و کپی لوگو
           mkdir -p app_build/assets
 
           if [ -f "assets/logo-sh.png" ]; then
@@ -194,7 +194,7 @@ jobs:
                   + content[compile_match.end():]
               )
 
-          # افزودن کتابخانه؛ این بررسی مستقل از فعال‌سازی compileOptions است
+          # افزودن کتابخانه desugar_jdk_libs
           dependency_pattern = r"\bcoreLibraryDesugaring\s*(?:\(|['\"])"
           if not re.search(dependency_pattern, content):
               dependencies_match = re.search(
@@ -234,56 +234,36 @@ jobs:
           print(f"Core Library Desugaring configured in {gradle_path}.")
           EOF
 
-      - name: Force compileSdk 34 for all plugins (Fix syncfusion_flutter_pdfviewer)
+      - name: Fetch Flutter Dependencies
+        working-directory: app_build
+        run: flutter pub get
+
+      - name: Patch syncfusion_flutter_pdfviewer compileSdk to 34
         run: |
           set -e
           python3 - << 'EOF'
+          import os
+          import re
           from pathlib import Path
 
-          root_gradle = Path("app_build/android/build.gradle")
-          root_gradle_kts = Path("app_build/android/build.gradle.kts")
+          pub_cache = Path(os.environ.get("PUB_CACHE", Path.home() / ".pub-cache"))
+          print(f"Scanning {pub_cache} for plugin build files...")
 
-          if root_gradle.exists():
-              print("Patching root build.gradle...")
-              override_code = """
+          count = 0
+          for gradle_file in pub_cache.glob("**/syncfusion_flutter_pdfviewer*/android/build.gradle*"):
+              print(f"Patching: {gradle_file}")
+              content = gradle_file.read_text(encoding="utf-8")
+              new_content = re.sub(r'compileSdk(?:Version)?\s*=?\s*\d+', 'compileSdkVersion 34', content)
+              if new_content != content:
+                  gradle_file.write_text(new_content, encoding="utf-8")
+                  count += 1
 
-          subprojects {
-              afterEvaluate { project ->
-                  if (project.hasProperty('android')) {
-                      project.android {
-                          compileSdkVersion 34
-                      }
-                  }
-              }
-          }
-          """
-              with open(root_gradle, "a", encoding="utf-8") as f:
-                  f.write(override_code)
-              print("Successfully injected compileSdkVersion 34 into build.gradle")
-
-          elif root_gradle_kts.exists():
-              print("Patching root build.gradle.kts...")
-              override_code = """
-
-          subprojects {
-              afterEvaluate {
-                  if (project.extensions.findByName("android") != null) {
-                      val android = project.extensions.getByName("android") as com.android.build.gradle.BaseExtension
-                      android.compileSdkVersion(34)
-                  }
-              }
-          }
-          """
-              with open(root_gradle_kts, "a", encoding="utf-8") as f:
-                  f.write(override_code)
-              print("Successfully injected compileSdkVersion 34 into build.gradle.kts")
+          print(f"Patched {count} file(s).")
           EOF
 
       - name: Generate Launcher Icons
         working-directory: app_build
-        run: |
-          flutter pub get
-          dart run flutter_launcher_icons
+        run: dart run flutter_launcher_icons
 
       - name: Build Android Release APK
         working-directory: app_build
