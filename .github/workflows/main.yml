@@ -84,14 +84,14 @@ jobs:
           with open(path, "r", encoding="utf-8") as f:
               content = f.read()
 
-          # تنظیم نام فارسی «شبهای دانشجوی» زیر آیکون برنامه در گوشی
+          # تنظیم نام فارسی زیر آیکون برنامه در گوشی
           app_match = re.search(r"<application\b[^>]*>", content, flags=re.DOTALL)
           if app_match:
               app_tag = app_match.group(0)
               if 'android:label="' in app_tag:
-                  app_tag = re.sub(r'android:label="[^"]*"', 'android:label="شبهای دانشجوی"', app_tag, count=1)
+                  app_tag = re.sub(r'android:label="[^"]*"', 'android:label="شبهای دانشجویی"', app_tag, count=1)
               else:
-                  app_tag = app_tag[:-1] + ' android:label="شبهای دانشجوی">'
+                  app_tag = app_tag[:-1] + ' android:label="شبهای دانشجویی">'
               content = content[:app_match.start()] + app_tag + content[app_match.end():]
 
           # افزودن مجوزهای نوتیفیکیشن، ساعت ۱۷ و اینترنت
@@ -102,6 +102,24 @@ jobs:
               "android.permission.POST_NOTIFICATIONS",
               "android.permission.SCHEDULE_EXACT_ALARM",
           ]
+
+          missing_permissions = []
+          for perm in permissions:
+              if f'android:name="{perm}"' not in content:
+                  missing_permissions.append(f'    <uses-permission android:name="{perm}"/>')
+
+          if missing_permissions:
+              app_idx = re.search(r"<application\b", content)
+              if app_idx:
+                  perm_str = "\n".join(missing_permissions) + "\n"
+                  content = content[:app_idx.start()] + perm_str + content[app_idx.start():]
+
+          with open(path, "w", encoding="utf-8") as f:
+              f.write(content)
+
+          print("AndroidManifest.xml successfully configured with Persian label and permissions.")
+          EOF
+
       - name: Enable Core Library Desugaring in build.gradle
         run: |
           python3 - << 'EOF'
@@ -131,23 +149,6 @@ jobs:
               f.write(content)
 
           print("Successfully enabled Core Library Desugaring in build.gradle")
-          EOF
-          
-          missing_permissions = []
-          for perm in permissions:
-              if f'android:name="{perm}"' not in content:
-                  missing_permissions.append(f'    <uses-permission android:name="{perm}"/>')
-
-          if missing_permissions:
-              app_idx = re.search(r"<application\b", content)
-              if app_idx:
-                  perm_str = "\n".join(missing_permissions) + "\n"
-                  content = content[:app_idx.start()] + perm_str + content[app_idx.start():]
-
-          with open(path, "w", encoding="utf-8") as f:
-              f.write(content)
-
-          print("AndroidManifest.xml successfully configured with Persian label and permissions.")
           EOF
 
       - name: Generate Launcher Icons
