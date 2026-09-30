@@ -1471,6 +1471,7 @@ Widget build(BuildContext context) {
       ),
     );
   }
+}
 
 // ==========================================
 // صفحه پخش صوت (Audio Player)
