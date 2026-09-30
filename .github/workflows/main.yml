@@ -140,7 +140,7 @@ jobs:
           print("AndroidManifest.xml configured successfully.")
           EOF
 
-      - name: Enable Core Library Desugaring
+      - name: Enable Core Library Desugaring & CI Gradle Tweaks
         run: |
           set -e
           python3 - << 'EOF'
@@ -267,7 +267,7 @@ jobs:
 
       - name: Build Android Release APK
         working-directory: app_build
-        run: flutter build apk --release
+        run: flutter build apk --release --no-tree-shake-icons
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
