@@ -1097,35 +1097,55 @@ void _showFeedbackDialog() {
       ),
     );
   }
-  // مورد ۷: تایید خروج با کلیک روی Back گوشی
-  Future<bool> _onWillPop() async {
-    final bool? exitApp = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF27293D),
-        title: const Text('تأیید خروج'),
-        content: const Text('آیا مایل به بستن برنامه هستید؟'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('خیر', style: TextStyle(color: Colors.white60)),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFFF6B4A)),
-            onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('بله', style: TextStyle(color: Colors.white)),
-          ),
-        ],
+// تابع تایید و بستن برنامه
+Future<void> _handleExit(BuildContext context) async {
+  final bool? shouldExit = await showDialog<bool>(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      backgroundColor: const Color(0xFF27293D),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      title: const Text(
+        'تأیید خروج',
+        style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
       ),
-    );
-    return exitApp ?? false;
-  }
+      content: const Text(
+        'آیا مایل به بستن برنامه هستید؟',
+        style: TextStyle(color: Colors.white70),
+      ),
+      actionsAlignment: MainAxisAlignment.center,
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(ctx).pop(false),
+          child: const Text('خیر', style: TextStyle(color: Colors.white70)),
+        ),
+        const SizedBox(width: 12),
+        ElevatedButton(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: const Color(0xFFFF6B4A),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          ),
+          onPressed: () => Navigator.of(ctx).pop(true),
+          child: const Text('بله', style: TextStyle(color: Colors.white)),
+        ),
+      ],
+    ),
+  );
 
-  @override
-  Widget build(BuildContext context) {
-    return WillPopScope(
-      onWillPop: _onWillPop,
-      child: Scaffold(
+  if (shouldExit == true) {
+    // خروج قطعی و کامل از اپلیکیشن
+    SystemNavigator.pop();
+  }
+}
+
+@override
+Widget build(BuildContext context) {
+  return PopScope(
+    canPop: false, // اجازه بستن مستقیم به سیستم‌عامل داده نمی‌شود
+    onPopInvoked: (bool didPop) {
+      if (didPop) return;
+      _handleExit(context); // هنگام زدن کلید Back، دیالوگ باز می‌شود
+    },
+    child: Scaffold(
         appBar: AppBar(
           title: _isSearching
               ? TextField(
