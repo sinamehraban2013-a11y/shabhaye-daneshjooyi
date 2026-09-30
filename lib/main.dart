@@ -1109,7 +1109,7 @@ void _showFeedbackDialog() {
                   ),
                   _buildMenuSheetItem(
                     icon: Icons.menu_book_rounded,
-                    title: 'کانال بروزترین مقالات فرهنگی و آموزشی',
+                    title: 'کانال به‌روزترین مقالات فرهنگی و آموزشی',
                     subtitle: 'کلیک کنید، سپس روی دکمه‌ی پیوستن بزنید',
                     iconColor: const Color(0xFF2E7D32),
                     iconBgColor: const Color(0xFFE8F5E9),
@@ -1143,7 +1143,7 @@ void _showFeedbackDialog() {
                     iconBgColor: const Color(0xFFE1F5FE),
                     onTap: () {
                       Navigator.pop(ctx);
-                      _launchURL('https://www.shiravi.org');
+                      _launchURL('https://shiravi.org');
                     },
                   ),
                   _buildMenuSheetItem(
