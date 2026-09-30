@@ -559,6 +559,12 @@ class _HomeScreenState extends State<HomeScreen> {
         _otherProducts = results[2];
         _isLoading = false;
       });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _isLoading = false;
+        _errorMessage = 'خطا در دریافت اطلاعات: $e';
+      });
     }
   }
   Future<List<DriveItem>> _fetchFolder(String folderId) async {
