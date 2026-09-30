@@ -1333,79 +1333,75 @@ Widget build(BuildContext context) {
   }
 
   Widget _buildTabBody() {
-    switch (_selectedTabIndex) {
+    switch (_selectedIndex) {
       case 0:
-        return _buildItemList(_texts, false);     // تب متون (PDF)
+        return _buildItemList(_texts);
       case 1:
-        return _buildItemList(_lectures, false);  // تب صوت / سخنرانی‌ها
+        return _buildItemList(_lectures);
       case 2:
         return const MbtiQuizScreen();
       case 3:
-        return _buildItemList(_otherProducts, true);
+        return _buildItemList(_otherProducts, isProductTab: true);
       default:
-        return const SizedBox.shrink();
+        return _buildItemList(_texts);
     }
   }
 
-  Widget _buildItemList(List<DriveItem> items, bool isProductTab) {
-    final filtered = items.where((it) => it.name.toLowerCase().contains(_searchQuery)).toList();
-
-    if (filtered.isEmpty) {
-      return const Center(child: Text('محتوایی یافت نشد.', style: TextStyle(color: Colors.white54)));
+  Widget _buildItemList(List<DriveItem> items, {bool isProductTab = false}) {
+    if (items.isEmpty) {
+      return const Center(
+        child: Text(
+          'موردی برای نمایش یافت نشد.',
+          style: TextStyle(color: Colors.white70),
+        ),
+      );
     }
 
-    return RefreshIndicator(
-      color: const Color(0xFFFF6B4A),
-      onRefresh: _fetchAllData,
-      child: ListView.builder(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-        itemCount: filtered.length,
-        itemBuilder: (context, index) {
-          final item = filtered[index];
-          final bool isRead = _readItemIds.contains(item.id);
-          final bool isAudio = item.name.toLowerCase().endsWith('.mp3');
-
-          Widget leadingIcon;
-          if (isProductTab) {
-            leadingIcon = const Icon(Icons.android, color: Colors.greenAccent);
-          } else if (isRead) {
-            leadingIcon = const Icon(Icons.check_circle, color: Colors.green);
-          } else {
-            leadingIcon = Icon(isAudio ? Icons.audiotrack : Icons.picture_as_pdf, color: const Color(0xFFFF6B4A));
-          }
-
-          return Card(
-            color: const Color(0xFF27293D),
-            margin: const EdgeInsets.symmetric(vertical: 4),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10),
-              side: isRead ? const BorderSide(color: Colors.green, width: 0.5) : BorderSide.none,
+    return ListView.builder(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      itemCount: items.length,
+      itemBuilder: (context, index) {
+        final item = items[index];
+        return Card(
+          margin: const EdgeInsets.only(bottom: 12),
+          color: const Color(0xFF27293D),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: ListTile(
+            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            leading: CircleAvatar(
+              backgroundColor: const Color(0xFFFF6B4A).withOpacity(0.15),
+              child: Icon(
+                isProductTab
+                    ? Icons.apps_rounded
+                    : (_selectedIndex == 0 ? Icons.picture_as_pdf_rounded : Icons.audiotrack_rounded),
+                color: const Color(0xFFFF6B4A),
+              ),
             ),
-            child: ListTile(
-              leading: leadingIcon,
-              title: Text(
-                item.name,
-                style: TextStyle(
-                  fontSize: 13.5,
-                  fontWeight: isRead ? FontWeight.normal : FontWeight.bold,
-                  color: isRead ? Colors.white70 : Colors.white,
-                ),
+            title: Text(
+              item.name,
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w600,
+                fontSize: 14,
               ),
-              subtitle: isProductTab
-                  ? const Text('جهت بارگیری و نصب لمس کنید', style: TextStyle(fontSize: 11, color: Colors.white54))
-                  : null,
-              trailing: const Icon(Icons.arrow_forward_ios, size: 14, color: Colors.white38),
-              onTap: () => _downloadAndOpen(
-                item, 
-                isApk: isProductTab,
-                isPdf: _selectedTabIndex == 0, // اگر تب اول (متون) انتخاب شده باشد، اجبار به باز شدن با PDF خوان
-              ),
-          );
-        },
-      ),
+            ),
+            trailing: const Icon(
+              Icons.arrow_forward_ios_rounded,
+              size: 16,
+              color: Colors.white54,
+            ),
+            onTap: () => _downloadAndOpen(
+              item,
+              isApk: isProductTab,
+              isPdf: _selectedIndex == 0,
+            ),
+          ),
+        );
+      },
     );
-  } // <--- ۱. این آکولاد بسته به عنوان پایان _buildItemList اضافه شد
-
+  }
 Future<void> _openEitaaChannel(String appUrl, String webUrl) async {
   try {
     final appUri = Uri.parse(appUrl);
