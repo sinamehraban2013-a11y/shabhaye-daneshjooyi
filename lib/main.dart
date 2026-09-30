@@ -1420,17 +1420,14 @@ Widget build(BuildContext context) {
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         itemCount: items.length,
         itemBuilder: (context, index) {
-          final item = items[index];
-          final bool isRead = _readItemIds.contains(item.id);
-          String checkName = item.name.replaceAll(RegExp(r'\.bin$'), '');
-          if (_selectedIndex == 0 && !checkName.toLowerCase().endsWith('.pdf')) {
-            checkName += '.pdf';
-          }
-          final bool isOfflineReady = _cachedFileNames.contains('), '');
-          if (_selectedIndex == 0 && !checkName.toLowerCase().endsWith('.pdf')) {
-            checkName += '.pdf';
-          }
-          final bool isOfflineReady = _cachedFileNames.contains(checkName);
+        final item = items[index];
+        final bool isRead = _readItemIds.contains(item.id);
+
+        String checkName = item.name.replaceAll(RegExp(r'\.bin$'), '');
+        if (_selectedIndex == 0 && !checkName.toLowerCase().endsWith('.pdf')) {
+          checkName += '.pdf';
+        }
+        final bool isOfflineReady = _cachedFileNames.contains(checkName);
 
           return Card(
             margin: const EdgeInsets.only(bottom: 12),
