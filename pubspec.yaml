@@ -19,7 +19,7 @@ dependencies:
   flutter_local_notifications: ^17.1.2
   timezone: ^0.9.4
   syncfusion_flutter_pdfviewer: ^28.2.7
-  device_info_plus: ^10.1.0
+  device_info_plus: ^11.5.0
   path_provider: ^2.1.2
   url_launcher: ^6.2.5
 
