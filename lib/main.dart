@@ -1683,7 +1683,7 @@ Future<void> _openEitaaChannel(String appUrl, String webUrl) async {
   }
 
   // علامت‌گذاری خوانده‌شده‌ها
-  void _markAsRead(String id) async {
+  Future<void> _markAsRead(String id) async {
     if (!_readItemIds.contains(id)) {
       setState(() {
         _readItemIds.add(id);
@@ -1694,7 +1694,18 @@ Future<void> _openEitaaChannel(String appUrl, String webUrl) async {
       } catch (_) {}
     }
   }
-
+  Future<void> _loadReadItems() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final savedList = prefs.getStringList('read_items') ?? [];
+      if (mounted) {
+        setState(() {
+          _readItemIds = savedList.toSet();
+        });
+      }
+    } catch (_) {}
+  }
+  
   // دیالوگ درباره ما
   void _showAboutDialog() {
     showDialog(
