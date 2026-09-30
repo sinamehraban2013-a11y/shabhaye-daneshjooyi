@@ -579,7 +579,7 @@ final downloadUrl = 'https://docs.google.com/uc?export=download&id=${item.id}';
         if (!mounted) return;
 
         if (isApk || safeName.toLowerCase().endsWith('.apk')) {
-          await OpenFile.open(file.path);
+          await OpenFilex.open(file.path);
         } else if (safeName.toLowerCase().endsWith('.pdf')) {
           Navigator.push(
             context,
