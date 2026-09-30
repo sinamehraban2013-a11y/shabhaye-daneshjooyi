@@ -59,61 +59,73 @@ const List<String> dailyMotivationMessages = [
 final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
 
 Future<void> setupDailyNotifications() async {
-  tz.initializeTimeZones();
-  // تنظیم به منطقه زمانی ایران
   try {
-    tz.setLocalLocation(tz.getLocation('Asia/Tehran'));
-  } catch (_) {}
-
-  const AndroidInitializationSettings initializationSettingsAndroid =
-      AndroidInitializationSettings('@mipmap/ic_launcher');
-
-  const InitializationSettings initializationSettings =
-      InitializationSettings(android: initializationSettingsAndroid);
-
-  await flutterLocalNotificationsPlugin.initialize(initializationSettings);
-
-  // درخواست مجوز نوتیفیکیشن در اندروید ۱۳ به بالا
-  final androidPlugin = flutterLocalNotificationsPlugin
-      .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
-  await androidPlugin?.requestNotificationsPermission();
-
-  // تنظیم زمان‌بندی برای ساعت ۱۷:۰۰ در ۷ روز متوالی
-  for (int i = 0; i < 7; i++) {
-    final now = tz.TZDateTime.now(tz.local);
-    var scheduledDate = tz.TZDateTime(tz.local, now.year, now.month, now.day, 17, 0).add(Duration(days: i));
-    
-    // اگر ساعت ۱۷ امروز گذشته باشد، از فردا شروع شود
-    if (scheduledDate.isBefore(now)) {
-      scheduledDate = scheduledDate.add(const Duration(days: 1));
+    tz.initializeTimeZones();
+    try {
+      tz.setLocalLocation(tz.getLocation('Asia/Tehran'));
+    } catch (_) {
+      // در صورت عدم شناسایی منطقه، زمان محلی دستگاه استفاده می‌شود
     }
 
-    await flutterLocalNotificationsPlugin.zonedSchedule(
-      i + 100, // شناسه یونیک نوتیفیکیشن
-      'شب‌های دانشجویی ✨',
-      dailyMotivationMessages[i],
-      scheduledDate,
-      const NotificationDetails(
-        android: AndroidNotificationDetails(
-          'daily_reminder_channel',
-          'یادآور روزانه شب‌های دانشجویی',
-          channelDescription: 'نمایش روزی و یادآور روزانه ساعت ۱۷',
-          importance: Importance.high,
-          priority: Priority.high,
+    const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
+    const initSettings = InitializationSettings(android: androidSettings);
+    await flutterLocalNotificationsPlugin.initialize(initSettings);
+
+    final androidPlugin = flutterLocalNotificationsPlugin
+        .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
+    await androidPlugin?.requestNotificationsPermission();
+
+    final now = tz.TZDateTime.now(tz.local);
+
+    for (int i = 0; i < 7; i++) {
+      int targetDay = (i == 0) ? 7 : i;
+
+      var scheduledDate = tz.TZDateTime(
+        tz.local,
+        now.year,
+        now.month,
+        now.day,
+        17,
+        0,
+      );
+
+      while (scheduledDate.weekday != targetDay || scheduledDate.isBefore(now)) {
+        scheduledDate = scheduledDate.add(const Duration(days: 1));
+      }
+
+      await flutterLocalNotificationsPlugin.zonedSchedule(
+        100 + i,
+        'شب‌های دانشجویی 🌙',
+        dailyMotivationMessages[i],
+        scheduledDate,
+        const NotificationDetails(
+          android: AndroidNotificationDetails(
+            'daily_reminder_channel',
+            'یادآورهای روزانه',
+            channelDescription: 'پیام‌های انگیزشی و یادآوری هفتگی ساعت ۱۷',
+            importance: Importance.max,
+            priority: Priority.high,
+            playSound: true,
+          ),
         ),
-      ),
-      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-      uiLocalNotificationDateInterpretation:
-          UILocalNotificationDateInterpretation.absoluteTime,
-      matchDateTimeComponents: DateTimeComponents.dayOfWeekAndTime, // تکرار هفتگی دقیق
-    );
+        androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+        uiLocalNotificationDateInterpretation:
+            UILocalNotificationDateInterpretation.absoluteTime,
+        matchDateTimeComponents: DateTimeComponents.dayOfWeekAndTime,
+      );
+    }
+  } catch (e) {
+    debugPrint('Notification setup error: $e');
   }
 }
 
-void main() async {
+void main() {
   WidgetsFlutterBinding.ensureInitialized();
-  await setupDailyNotifications(); // فعال‌سازی اعلان روزانه ساعت ۱۷
   runApp(const ShabHayeDaneshjouyiApp());
+  // اجرای ایمن و غیرمسدودکننده در پس‌زمینه بعد از لود کامل UI
+  WidgetsBinding.instance.addPostFrameCallback((_) {
+    setupDailyNotifications();
+  });
 }
 
 // مدل آیتم‌های فایل گوگل درایو
