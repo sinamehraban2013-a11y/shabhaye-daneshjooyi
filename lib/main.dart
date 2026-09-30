@@ -1315,7 +1315,7 @@ void _showFeedbackDialog() {
     }
   }
 
-  // نمایش پیام
+  // نمایش اسنک‌بار
   void _showSnackBar(String message, {bool isError = false}) {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
@@ -1341,18 +1341,6 @@ void _showFeedbackDialog() {
         final prefs = await SharedPreferences.getInstance();
         await prefs.setStringList('read_items', _readItemIds.toList());
       } catch (_) {}
-    }
-  }
-    Future<void> _launchURL(String urlString) async {
-    final uri = Uri.parse(urlString);
-    try {
-      if (await canLaunchUrl(uri)) {
-        await launchUrl(uri, mode: LaunchMode.externalApplication);
-      } else {
-        _showSnackBar('امکان باز کردن این پیوند وجود ندارد.', isError: true);
-      }
-    } catch (_) {
-      _showSnackBar('خطا در باز کردن پیوند', isError: true);
     }
   }
 
