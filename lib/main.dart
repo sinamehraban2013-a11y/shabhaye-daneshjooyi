@@ -1343,6 +1343,52 @@ void _showFeedbackDialog() {
       } catch (_) {}
     }
   }
+    Future<void> _launchURL(String urlString) async {
+    final uri = Uri.parse(urlString);
+    try {
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      } else {
+        _showSnackBar('امکان باز کردن این پیوند وجود ندارد.', isError: true);
+      }
+    } catch (_) {
+      _showSnackBar('خطا در باز کردن پیوند', isError: true);
+    }
+  }
+
+  // دیالوگ درباره ما
+  void _showAboutDialog() {
+    showDialog(
+      context: context,
+      builder: (ctx) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          title: const Text(
+            'درباره برنامه',
+            style: TextStyle(fontFamily: 'Vazirmatn', fontWeight: FontWeight.bold),
+          ),
+          content: const Text(
+            'این نرم‌افزار حاصل ایده‌پردازی و کوشش جوانان هنرمندی است که در پاسخ به ندای رهبر شهید انقلاب و در راستای ایجاد تمدن ایرانی-اسلامی، با تلاشی مخلصانه و خلاقانه، جهاد تبیین را شروع کرده‌اند. امیدواریم با هدایت اهل فن و حمایت شما، بتوانیم محصولاتی جذاب، فرهنگی و مفید برای شما فراهم کنیم. به دعای خیر شما و حمایت‌هایتان محتاجیم.\n'
+            'با ما در شبکه‌های اجتماعی در ارتباط باشید.\n'
+            'اللهم عجل لولیک الفرج',
+            style: TextStyle(fontFamily: 'Vazirmatn', height: 1.8),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text(
+                'بستن',
+                style: TextStyle(fontFamily: 'Vazirmatn'),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 // ==========================================
