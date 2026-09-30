@@ -527,7 +527,8 @@ class _HomeScreenState extends State<HomeScreen> {
   List<DriveItem> _lectures = [];
   List<DriveItem> _otherProducts = [];
   List<String> _readItemIds = [];
-  Set<String> _cachedFileNames = {};  
+  Set<String> _cachedFileNames = {};
+  bool _hasNewAnnouncement = false;
 
   @override
   void initState() {
@@ -536,7 +537,7 @@ class _HomeScreenState extends State<HomeScreen> {
     _loadReadItems();
     _updateCachedFilesList(); // <--- این خط اضافه شود
     _fetchAllData();
-    _checkDailyNotificationNotice();
+    _checkNewAnnouncement();
   }
   Future<void> _updateCachedFilesList() async {
     try {
@@ -839,60 +840,93 @@ class _HomeScreenState extends State<HomeScreen> {
   // متد خواندن مستقیم متن اطلاعیه از فایل درایو
   Future<String?> _fetchAnnouncementText() async {
     try {
-      final url = '$scriptApiUrl?fileId=$announcementFileId';
-      final response = await http.get(Uri.parse(url)).timeout(const Duration(seconds: 10));
+      // لینک کامل و مستقیم دریافت خروجی متنی فایل ورد
+      const fullDirectUrl =
+          'https://docs.google.com/document/d/1aDcz3OOlf8oGcYmqt7gt3pJXuJjQmasGN_YqpCrorjg/export?format=txt';
+
+      final response = await http
+          .get(Uri.parse(fullDirectUrl))
+          .timeout(const Duration(seconds: 10));
+
       if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        if (data is Map && data.containsKey('content')) {
-          return data['content'].toString();
+        final body = response.body.trim();
+        // اطمینان از اینکه خروجی متن است نه صفحه خطای وب
+        if (!body.startsWith('<!DOCTYPE') &&
+            !body.startsWith('<html') &&
+            body.isNotEmpty) {
+          return body;
         }
-        return response.body;
       }
-    } catch (_) {}
+    } catch (e) {
+      debugPrint('Error fetching direct announcement: $e');
+    }
     return null;
   }
-  // مورد ۴: شیپور (دریافت پیام و اطلاعیه جدید از گوگل درایو)
+
+  // بررسی خودکار تغییر متن برای نمایش نقطه قرمز
+  Future<void> _checkNewAnnouncement() async {
+    try {
+      final text = await _fetchAnnouncementText();
+      if (!mounted || text == null || text.trim().isEmpty) return;
+      
+      final prefs = await SharedPreferences.getInstance();
+      final lastSeen = prefs.getString('last_seen_announcement') ?? '';
+      
+      if (mounted) {
+        setState(() {
+          _hasNewAnnouncement = (text.trim() != lastSeen.trim());
+        });
+      }
+    } catch (_) {}
+  }
+
+  // باز کردن اطلاعیه و خاموش کردن نقطه قرمز
   Future<void> _showNotificationNotice() async {
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (ctx) => const Center(
-        child: CircularProgressIndicator(color: Color(0xFFFF6B4A)),
-      ),
+      builder: (ctx) => const Center(child: CircularProgressIndicator()),
     );
 
-    // دریافت اطلاعیه پویا از سرور یا فایل گوگل درایو
-    String? announcement = await _fetchAnnouncementText();
+    final announcement = await _fetchAnnouncementText();
+    if (mounted) Navigator.pop(context);
+
+    if (announcement != null && announcement.trim().isNotEmpty) {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('last_seen_announcement', announcement.trim());
+      if (mounted) {
+        setState(() {
+          _hasNewAnnouncement = false;
+        });
+      }
+    }
+
     if (!mounted) return;
-    Navigator.pop(context); // بستن لودینگ
 
     showDialog(
       context: context,
-      builder: (ctx) => Directionality(
-        textDirection: TextDirection.rtl,
-        child: AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          backgroundColor: const Color(0xFF27293D),
-          title: const Row(
-            children: [
-              Icon(Icons.campaign, color: Color(0xFFFF6B4A), size: 28),
-              SizedBox(width: 8),
-              Text('اطلاعیه‌ها و پیام‌های جدید', style: TextStyle(color: Colors.white, fontSize: 16)),
-            ],
-          ),
-          content: SingleChildScrollView(
-            child: Text(
-              announcement ?? 'در حال حاضر پیام یا اطلاعیه جدیدی ثبت نشده است.',
-              style: const TextStyle(color: Colors.white70, fontSize: 13, height: 1.6),
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: const Text('متوجه شدم', style: TextStyle(color: Color(0xFFFF6B4A))),
-            ),
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Row(
+          children: [
+            Icon(Icons.campaign, color: Color(0xFF1B5E20)),
+            SizedBox(width: 8),
+            Text('اطلاعیه‌ها', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
           ],
         ),
+        content: SingleChildScrollView(
+          child: Text(
+            announcement ?? 'در حال حاضر پیام یا اطلاعیه جدیدی ثبت نشده است.',
+            style: const TextStyle(fontSize: 14, height: 1.6),
+            textAlign: TextAlign.justify,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('متوجه شدم', style: TextStyle(color: Color(0xFF1B5E20))),
+          ),
+        ],
       ),
     );
   }
@@ -1278,10 +1312,28 @@ Widget build(BuildContext context) {
               },
             ),
             if (!_isSearching)
-              IconButton(
-                icon: const Icon(Icons.campaign_outlined),
-                tooltip: 'اطلاعیه‌ها',
-                onPressed: _showNotificationNotice,
+              Stack(
+                alignment: Alignment.center,
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.campaign_outlined),
+                    tooltip: 'اطلاعیه‌ها',
+                    onPressed: _showNotificationNotice,
+                  ),
+                  if (_hasNewAnnouncement)
+                    Positioned(
+                      top: 10,
+                      right: 10,
+                      child: Container(
+                        width: 9,
+                        height: 9,
+                        decoration: const BoxDecoration(
+                          color: Colors.redAccent,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                    ),
+                ],
               ),
           ],
         ),
