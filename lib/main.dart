@@ -618,25 +618,6 @@ class _HomeScreenState extends State<HomeScreen> {
     }
     return [];
   }
-
-  Future<void> _manageCacheLimit() async {
-    try {
-      final dir = await getTemporaryDirectory();
-      final List<FileSystemEntity> files = dir.listSync()
-        ..retainWhere((file) => file is File && (file.path.endsWith('.pdf') || file.path.endsWith('.mp3') || file.path.endsWith('.m4a') || file.path.endsWith('.wav')));
-      
-      if (files.length > 10) {
-        // مرتب‌سازی بر اساس زمان آخرین دسترسی/تغییر (قدیمی‌ترین در ابتدا)
-        files.sort((a, b) => a.statSync().modified.compareTo(b.statSync().modified));
-        final int deleteCount = files.length - 10;
-        for (int i = 0; i < deleteCount; i++) {
-          await files[i].delete();
-        }
-      }
-    } catch (e) {
-      debugPrint('Cache management error: $e');
-    }
-  }
   
   Future<void> _downloadAndOpen(DriveItem item, {bool isApk = false, bool isPdf = false}) async {
     showDialog(
@@ -1404,15 +1385,7 @@ Widget build(BuildContext context) {
       case 3:
         return _buildItemList(_otherProducts, isProductTab: true);
       default:
-        return _buildItemList(_texts);
-        final item = items[index];
-        final bool isRead = _readItemIds.contains(item.id);
-        
-        String checkName = item.name.replaceAll(RegExp(r'\.bin$'), '');
-        if (_selectedIndex == 0 && !checkName.toLowerCase().endsWith('.pdf')) {
-          checkName += '.pdf';
-        }
-        final bool isOfflineReady = _cachedFileNames.contains(checkName);      
+        return _buildItemList(_texts);    
     }
   }
 
@@ -1449,6 +1422,15 @@ Widget build(BuildContext context) {
         itemBuilder: (context, index) {
           final item = items[index];
           final bool isRead = _readItemIds.contains(item.id);
+          String checkName = item.name.replaceAll(RegExp(r'\.bin$'), '');
+          if (_selectedIndex == 0 && !checkName.toLowerCase().endsWith('.pdf')) {
+            checkName += '.pdf';
+          }
+          final bool isOfflineReady = _cachedFileNames.contains('), '');
+          if (_selectedIndex == 0 && !checkName.toLowerCase().endsWith('.pdf')) {
+            checkName += '.pdf';
+          }
+          final bool isOfflineReady = _cachedFileNames.contains(checkName);
 
           return Card(
             margin: const EdgeInsets.only(bottom: 12),
