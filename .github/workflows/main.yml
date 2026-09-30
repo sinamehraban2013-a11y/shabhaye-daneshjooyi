@@ -33,43 +33,46 @@ jobs:
         run: |
           set -e
 
-          # ۱. کپی فایل pubspec.yaml از ریشه مخزن
-          if [ -f "pubspec.yaml" ]; then
-            echo "Copying pubspec.yaml from root..."
+          # انتخاب pubspec نهایی در صورت وجود؛ در غیر این صورت فایل استاندارد
+          if [ -f "pubspec-(4).yaml" ]; then
+            echo "Copying pubspec-(4).yaml..."
+            cp "pubspec-(4).yaml" "app_build/pubspec.yaml"
+          elif [ -f "pubspec.yaml" ]; then
+            echo "Copying pubspec.yaml..."
             cp "pubspec.yaml" "app_build/pubspec.yaml"
           else
-            echo "ERROR: pubspec.yaml not found in root!"
+            echo "ERROR: No pubspec file found!"
             ls -la
             exit 1
           fi
 
-          # ۲. کپی فایل main.dart از دایرکتوری lib
-          if [ -f "lib/main.dart" ]; then
-            echo "Copying main.dart from lib/..."
+          # انتخاب main نهایی در صورت وجود؛ در غیر این صورت فایل استاندارد
+          if [ -f "main-(4).dart" ]; then
+            echo "Copying main-(4).dart..."
+            cp "main-(4).dart" "app_build/lib/main.dart"
+          elif [ -f "lib/main.dart" ]; then
+            echo "Copying lib/main.dart..."
             cp "lib/main.dart" "app_build/lib/main.dart"
           elif [ -f "main.dart" ]; then
-            echo "Copying main.dart from root..."
+            echo "Copying main.dart..."
             cp "main.dart" "app_build/lib/main.dart"
           else
-            echo "ERROR: main.dart not found in lib/ or root!"
+            echo "ERROR: No main.dart file found!"
             find . -name "*.dart"
             exit 1
           fi
 
-          # ۳. ساخت پوشه assets و کپی لوگو
+          # ساخت پوشهٔ assets و کپی لوگو
           mkdir -p app_build/assets
 
           if [ -f "assets/logo-sh.png" ]; then
-            echo "Found logo at assets/logo-sh.png"
             cp "assets/logo-sh.png" "app_build/assets/logo-sh.png"
           elif [ -f "shabhaye-daneshjooyi/assets/logo-sh.png" ]; then
-            echo "Found logo at shabhaye-daneshjooyi/assets/logo-sh.png"
             cp "shabhaye-daneshjooyi/assets/logo-sh.png" "app_build/assets/logo-sh.png"
           elif [ -f "logo-sh.png" ]; then
-            echo "Found logo at logo-sh.png"
             cp "logo-sh.png" "app_build/assets/logo-sh.png"
           else
-            echo "ERROR: logo-sh.png was not found anywhere!"
+            echo "ERROR: logo-sh.png was not found!"
             find . -name "*.png"
             exit 1
           fi
@@ -81,20 +84,29 @@ jobs:
           import re
 
           path = "app_build/android/app/src/main/AndroidManifest.xml"
+
           with open(path, "r", encoding="utf-8") as f:
               content = f.read()
 
-          # تنظیم نام فارسی زیر آیکون برنامه در گوشی
+          # تنظیم نام فارسی برنامه
           app_match = re.search(r"<application\b[^>]*>", content, flags=re.DOTALL)
-          if app_match:
-              app_tag = app_match.group(0)
-              if 'android:label="' in app_tag:
-                  app_tag = re.sub(r'android:label="[^"]*"', 'android:label="شبهای دانشجویی"', app_tag, count=1)
-              else:
-                  app_tag = app_tag[:-1] + ' android:label="شبهای دانشجویی">'
-              content = content[:app_match.start()] + app_tag + content[app_match.end():]
+          if not app_match:
+              raise SystemExit("ERROR: <application> tag was not found in AndroidManifest.xml")
 
-          # افزودن مجوزهای نوتیفیکیشن، ساعت ۱۷ و اینترنت
+          app_tag = app_match.group(0)
+          if 'android:label="' in app_tag:
+              app_tag = re.sub(
+                  r'android:label="[^"]*"',
+                  'android:label="شبهای دانشجویی"',
+                  app_tag,
+                  count=1
+              )
+          else:
+              app_tag = app_tag[:-1] + ' android:label="شبهای دانشجویی">'
+
+          content = content[:app_match.start()] + app_tag + content[app_match.end():]
+
+          # مجوزهای موردنیاز برنامه
           permissions = [
               "android.permission.INTERNET",
               "android.permission.RECEIVE_BOOT_COMPLETED",
@@ -106,49 +118,120 @@ jobs:
           missing_permissions = []
           for perm in permissions:
               if f'android:name="{perm}"' not in content:
-                  missing_permissions.append(f'    <uses-permission android:name="{perm}"/>')
+                  missing_permissions.append(
+                      f'    <uses-permission android:name="{perm}"/>'
+                  )
 
           if missing_permissions:
               app_idx = re.search(r"<application\b", content)
-              if app_idx:
-                  perm_str = "\n".join(missing_permissions) + "\n"
-                  content = content[:app_idx.start()] + perm_str + content[app_idx.start():]
+              if not app_idx:
+                  raise SystemExit("ERROR: <application> tag was not found.")
+
+              permission_text = "\n".join(missing_permissions) + "\n"
+              content = (
+                  content[:app_idx.start()]
+                  + permission_text
+                  + content[app_idx.start():]
+              )
 
           with open(path, "w", encoding="utf-8") as f:
               f.write(content)
 
-          print("AndroidManifest.xml successfully configured with Persian label and permissions.")
+          print("AndroidManifest.xml configured successfully.")
           EOF
 
-      - name: Enable Core Library Desugaring in build.gradle
+      - name: Enable Core Library Desugaring
         run: |
+          set -e
           python3 - << 'EOF'
           import re
+          from pathlib import Path
 
-          gradle_path = "app_build/android/app/build.gradle"
-          with open(gradle_path, "r", encoding="utf-8") as f:
-              content = f.read()
+          app_dir = Path("app_build/android/app")
+          candidates = [
+              app_dir / "build.gradle",
+              app_dir / "build.gradle.kts",
+          ]
 
-          # ۱. فعال‌سازی در compileOptions
-          if "coreLibraryDesugaringEnabled" not in content:
-              content = re.sub(
-                  r'(compileOptions\s*\{)',
-                  r'\1\n        coreLibraryDesugaringEnabled true',
+          gradle_path = next((path for path in candidates if path.is_file()), None)
+
+          if gradle_path is None:
+              available = list(app_dir.glob("build.gradle*"))
+              raise SystemExit(
+                  "ERROR: Neither build.gradle nor build.gradle.kts was found. "
+                  f"Files present: {available}"
+              )
+
+          is_kts = gradle_path.name.endswith(".kts")
+          print(f"Updating {gradle_path}")
+
+          content = gradle_path.read_text(encoding="utf-8")
+
+          # فعال‌سازی desugaring در compileOptions
+          compile_match = re.search(
+              r"(?m)^([ \t]*)compileOptions\s*\{",
+              content
+          )
+
+          if not compile_match:
+              raise SystemExit(
+                  f"ERROR: compileOptions block was not found in {gradle_path}"
+              )
+
+          enabled_pattern = r"\b(?:is)?coreLibraryDesugaringEnabled\b"
+          if not re.search(enabled_pattern, content):
+              indent = compile_match.group(1) + "    "
+              setting = (
+                  "isCoreLibraryDesugaringEnabled = true"
+                  if is_kts
+                  else "coreLibraryDesugaringEnabled true"
+              )
+              content = (
+                  content[:compile_match.end()]
+                  + "\n"
+                  + indent
+                  + setting
+                  + content[compile_match.end():]
+              )
+
+          # افزودن کتابخانه؛ این بررسی مستقل از فعال‌سازی compileOptions است
+          dependency_pattern = r"\bcoreLibraryDesugaring\s*(?:\(|['\"])"
+          if not re.search(dependency_pattern, content):
+              dependencies_match = re.search(
+                  r"(?m)^([ \t]*)dependencies\s*\{",
                   content
               )
 
-          # ۲. اضافه کردن کتابخانه به dependencies
-          desugar_dep = "    coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.1.4'\n"
-          if "coreLibraryDesugaring" not in content:
-              if "dependencies {" in content:
-                  content = re.sub(r'(dependencies\s*\{)', r'\1\n' + desugar_dep, content)
+              if is_kts:
+                  dependency_line = (
+                      'coreLibraryDesugaring('
+                      '"com.android.tools:desugar_jdk_libs:2.1.4")'
+                  )
               else:
-                  content += f"\ndependencies {{\n{desugar_dep}}}\n"
+                  dependency_line = (
+                      "coreLibraryDesugaring "
+                      "'com.android.tools:desugar_jdk_libs:2.1.4'"
+                  )
 
-          with open(gradle_path, "w", encoding="utf-8") as f:
-              f.write(content)
+              if dependencies_match:
+                  indent = dependencies_match.group(1) + "    "
+                  content = (
+                      content[:dependencies_match.end()]
+                      + "\n"
+                      + indent
+                      + dependency_line
+                      + content[dependencies_match.end():]
+                  )
+              else:
+                  content += (
+                      "\n\ndependencies {\n"
+                      + "    "
+                      + dependency_line
+                      + "\n}\n"
+                  )
 
-          print("Successfully enabled Core Library Desugaring in build.gradle")
+          gradle_path.write_text(content, encoding="utf-8")
+          print(f"Core Library Desugaring configured in {gradle_path}.")
           EOF
 
       - name: Generate Launcher Icons
