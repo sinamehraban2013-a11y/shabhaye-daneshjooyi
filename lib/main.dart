@@ -1308,42 +1308,62 @@ Widget build(BuildContext context) {
     );
   } // <--- ۱. این آکولاد بسته به عنوان پایان _buildItemList اضافه شد
 
-  // ۲. نسخه کامل و پارامتردار باز کردن ایتا (با پشتیبانی از اپ و وب)
-  // باز کردن کانال ایتا
-  Future<void> _openEitaaChannel({
-    required String appUrl,
-    required String webUrl,
-  }) async {
-    final appUri = Uri.parse(appUrl);
-    final webUri = Uri.parse(webUrl);
+  Future<void> _openEitaaChannel(String appUrl, String webUrl) async {
+    final Uri appUri = Uri.parse(appUrl);
+    final Uri webUri = Uri.parse(webUrl);
+
     try {
-      if (await canLaunchUrl(appUri)) {
-        await launchUrl(appUri, mode: LaunchMode.externalApplication);
-      } else if (await canLaunchUrl(webUri)) {
-        await launchUrl(webUri, mode: LaunchMode.externalApplication);
-      } else {
-        _showSnackBar('امکان باز کردن کانال ایتا وجود ندارد.', isError: true);
-      }
+      // ابتدا تلاش برای باز کردن مستقیم داخل اپلیکیشن ایتا
+      bool launched = await launchUrl(
+        appUri,
+        mode: LaunchMode.externalNonBrowserApplication,
+      );
+      if (launched) return;
     } catch (_) {
-      if (await canLaunchUrl(webUri)) {
-        await launchUrl(webUri, mode: LaunchMode.externalApplication);
-      } else {
-        _showSnackBar('خطا در باز کردن پیوند', isError: true);
+      // در صورت نبودن اپلیکیشن ایتا، خطا نادیده گرفته شده و به مرحله وب می‌رود
+    }
+
+    // اگر اپ ایتا باز نشد، لینک وب را در مرورگر باز کن
+    try {
+      bool launchedWeb = await launchUrl(
+        webUri,
+        mode: LaunchMode.externalApplication,
+      );
+      if (!launchedWeb && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('امکان باز کردن این پیوند وجود ندارد.')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('امکان باز کردن این پیوند وجود ندارد.')),
+        );
       }
     }
   }
 
-  // باز کردن لینک‌های عمومی (بله، وب‌سایت، ایمیل بازخورد)
   Future<void> _launchURL(String urlString) async {
-    final uri = Uri.parse(urlString);
+    final Uri uri = Uri.parse(urlString);
+
     try {
-      if (await canLaunchUrl(uri)) {
-        await launchUrl(uri, mode: LaunchMode.externalApplication);
-      } else {
-        _showSnackBar('امکان باز کردن این پیوند وجود ندارد.', isError: true);
+      // تلاش مستقیم برای باز کردن پیوند (وب، بله، ایمیل و ...)
+      final bool launched = await launchUrl(
+        uri,
+        mode: LaunchMode.externalApplication,
+      );
+
+      if (!launched && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('امکان باز کردن این پیوند وجود ندارد.')),
+        );
       }
-    } catch (_) {
-      _showSnackBar('خطا در باز کردن پیوند', isError: true);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('امکان باز کردن این پیوند وجود ندارد.')),
+        );
+      }
     }
   }
 
