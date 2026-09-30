@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:http/http.dart' as http;
 import 'package:open_filex/open_filex.dart';
+import 'package:wakelock_plus/wakelock_plus.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:syncfusion_flutter_pdfviewer/pdfviewer.dart';
@@ -530,12 +531,15 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
+    WakelockPlus.enable(); // روشن نگه‌داشتن صفحه
+    _loadReadItems();
     _fetchAllData();
+    _checkDailyNotificationNotice();
   }
 
   @override
   void dispose() {
-    _searchController.dispose();
+    WakelockPlus.disable(); // آزادسازی در خروج کامل
     super.dispose();
   }
   Future<void> _fetchAllData() async {
@@ -581,78 +585,100 @@ class _HomeScreenState extends State<HomeScreen> {
     return [];
   }
 
-  Future<void> _downloadAndOpen(
-    DriveItem item, {
-    bool isApk = false,
-    bool isPdf = false,
-  }) async {
+  Future<void> _manageCacheLimit() async {
+    try {
+      final dir = await getTemporaryDirectory();
+      final List<FileSystemEntity> files = dir.listSync()
+        ..retainWhere((file) => file is File && (file.path.endsWith('.pdf') || file.path.endsWith('.mp3') || file.path.endsWith('.m4a') || file.path.endsWith('.wav')));
+      
+      if (files.length > 6) {
+        // مرتب‌سازی بر اساس زمان آخرین دسترسی/تغییر (قدیمی‌ترین در ابتدا)
+        files.sort((a, b) => a.statSync().modified.compareTo(b.statSync().modified));
+        final int deleteCount = files.length - 6;
+        for (int i = 0; i < deleteCount; i++) {
+          await files[i].delete();
+        }
+      }
+    } catch (e) {
+      debugPrint('Cache management error: $e');
+    }
+  }
+  
+  Future<void> _downloadAndOpen(DriveItem item, {bool isApk = false, bool isPdf = false}) async {
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF1E293B),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const CircularProgressIndicator(color: Color(0xFFD4AF37)),
-            const SizedBox(height: 16),
-            Text(
-              'در حال بارگیری ${item.name}...',
-              style: const TextStyle(fontFamily: 'Vazir', color: Colors.white, fontSize: 13),
-              textAlign: TextAlign.center,
-            ),
-          ],
+      builder: (ctx) => WillPopScope(
+        onWillPop: () async => false,
+        child: const AlertDialog(
+          backgroundColor: Color(0xFF27293D),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              CircularProgressIndicator(color: Color(0xFFFF6B4A)),
+              SizedBox(height: 16),
+              Text(
+                'در حال دریافت فایل...\nلطفاً شکیبا باشید',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Colors.white, fontSize: 13),
+              ),
+            ],
+          ),
         ),
       ),
     );
 
     try {
       final dir = await getTemporaryDirectory();
-      String safeName = item.name.replaceAll(RegExp(r'\.bin$', caseSensitive: false), '');
-      
-      // اگر از تب متون آمده یا فرمت PDF است و پسوند ندارد، پسوند اضافه شود
-      if ((isPdf || safeName.toLowerCase().contains('.pdf')) && !safeName.toLowerCase().endsWith('.pdf')) {
-        safeName = '$safeName.pdf';
+      String safeName = item.name.replaceAll(RegExp(r'\.bin$'), '');
+      if (isPdf && !safeName.toLowerCase().endsWith('.pdf')) {
+        safeName += '.pdf';
       }
-
-      final file = File('${dir.path}/$safeName');
+      final filePath = '${dir.path}/$safeName';
+      final file = File(filePath);
 
       if (!await file.exists()) {
-        final downloadUrl = 'https://docs.google.com/uc?export=download&id=${item.id}';
-        final response = await http.get(Uri.parse(downloadUrl));
-        if (response.statusCode == 200) {
-          await file.writeAsBytes(response.bodyBytes);
+        final url = 'https://docs.google.com/uc?export=download&id=${item.id}';
+        final res = await http.get(Uri.parse(url));
+        if (res.statusCode == 200) {
+          await file.writeAsBytes(res.bodyBytes);
+          await _manageCacheLimit(); // اعمال محدودیت ۶ فایل
         } else {
-          throw Exception('خطا در دریافت فایل (${response.statusCode})');
+          throw Exception('خطا در دانلود فایل: ${res.statusCode}');
         }
       }
 
-      if (!mounted) return;
-      Navigator.pop(context); // بستن پنجره لودینگ
+      // علامت‌گذاری به عنوان دریافت/خوانده‌شده
+      await _markAsRead(item.id);
 
-      // تصمیم‌گیری هوشمند برای باز کردن بر اساس نوع فایل و تب
-      if (isApk || safeName.toLowerCase().endsWith('.apk')) {
-        await OpenFilex.open(file.path);
-      } else if (isPdf || safeName.toLowerCase().endsWith('.pdf')) {
-        Navigator.push(
-          context,
+      if (!mounted) return;
+      Navigator.of(context, rootNavigator: true).pop(); // بستن دیالوگ لودینگ
+
+      if (isApk) {
+        await OpenFilex.open(filePath);
+      } else if (isPdf) {
+        Navigator.of(context).push(
           MaterialPageRoute(
-            builder: (_) => PdfViewerScreen(filePath: file.path, title: item.name),
+            builder: (_) => PdfViewerScreen(title: item.name, filePath: filePath),
           ),
         );
       } else {
-        Navigator.push(
-          context,
+        // سخنرانی یا صوت
+        Navigator.of(context).push(
           MaterialPageRoute(
-            builder: (_) => AudioPlayerScreen(filePath: file.path, title: item.name),
+            builder: (_) => AudioPlayerScreen(title: item.name, filePath: filePath),
           ),
         );
       }
     } catch (e) {
       if (mounted) {
-        Navigator.pop(context); // بستن پنجره لودینگ در صورت خطا
-        _showSnackBar('خطا در بارگیری محتوا: $e');
+        Navigator.of(context, rootNavigator: true).pop();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('خطا در بارگیری یا پخش: $e'),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
       }
     }
   }
@@ -1348,60 +1374,94 @@ Widget build(BuildContext context) {
   }
 
   Widget _buildItemList(List<DriveItem> items, {bool isProductTab = false}) {
-    if (items.isEmpty) {
-      return const Center(
-        child: Text(
-          'موردی برای نمایش یافت نشد.',
-          style: TextStyle(color: Colors.white70),
+    if (items.isEmpty && !_isLoading) {
+      return RefreshIndicator(
+        onRefresh: _fetchAllData,
+        color: const Color(0xFFFF6B4A),
+        backgroundColor: const Color(0xFF27293D),
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          children: const [
+            SizedBox(height: 120),
+            Center(
+              child: Text(
+                'موردی برای نمایش یافت نشد.\nبرای بروزرسانی صفحه را به پایین بکشید.',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Colors.white70, fontSize: 13),
+              ),
+            ),
+          ],
         ),
       );
     }
 
-    return ListView.builder(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      itemCount: items.length,
-      itemBuilder: (context, index) {
-        final item = items[index];
-        return Card(
-          margin: const EdgeInsets.only(bottom: 12),
-          color: const Color(0xFF27293D),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: ListTile(
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            leading: CircleAvatar(
-              backgroundColor: const Color(0xFFFF6B4A).withOpacity(0.15),
-              child: Icon(
-                isProductTab
-                    ? Icons.apps_rounded
-                    : (_selectedIndex == 0 ? Icons.picture_as_pdf_rounded : Icons.audiotrack_rounded),
-                color: const Color(0xFFFF6B4A),
+    return RefreshIndicator(
+      onRefresh: _fetchAllData,
+      color: const Color(0xFFFF6B4A),
+      backgroundColor: const Color(0xFF27293D),
+      child: ListView.builder(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        itemCount: items.length,
+        itemBuilder: (context, index) {
+          final item = items[index];
+          final bool isRead = _readItemIds.contains(item.id);
+
+          return Card(
+            margin: const EdgeInsets.only(bottom: 12),
+            color: const Color(0xFF27293D),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: ListTile(
+              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              leading: CircleAvatar(
+                backgroundColor: const Color(0xFFFF6B4A).withOpacity(0.15),
+                child: Icon(
+                  isProductTab
+                      ? Icons.apps_rounded
+                      : (_selectedIndex == 0 ? Icons.picture_as_pdf_rounded : Icons.audiotrack_rounded),
+                  color: const Color(0xFFFF6B4A),
+                ),
+              ),
+              title: Text(
+                item.name,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 14,
+                ),
+              ),
+              trailing: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (isRead) ...[
+                    const Icon(
+                      Icons.check_circle_rounded,
+                      color: Color(0xFF4CAF50), // تیک سبز
+                      size: 18,
+                    ),
+                    const SizedBox(width: 8),
+                  ],
+                  const Icon(
+                    Icons.arrow_forward_ios_rounded,
+                    size: 16,
+                    color: Colors.white54,
+                  ),
+                ],
+              ),
+              onTap: () => _downloadAndOpen(
+                item,
+                isApk: isProductTab,
+                isPdf: _selectedIndex == 0,
               ),
             ),
-            title: Text(
-              item.name,
-              style: const TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.w600,
-                fontSize: 14,
-              ),
-            ),
-            trailing: const Icon(
-              Icons.arrow_forward_ios_rounded,
-              size: 16,
-              color: Colors.white54,
-            ),
-            onTap: () => _downloadAndOpen(
-              item,
-              isApk: isProductTab,
-              isPdf: _selectedIndex == 0,
-            ),
-          ),
-        );
-      },
+          );
+        },
+      ),
     );
   }
+  
 Future<void> _openEitaaChannel(String appUrl, String webUrl) async {
   try {
     final appUri = Uri.parse(appUrl);
@@ -1562,15 +1622,34 @@ class _AudioPlayerScreenState extends State<AudioPlayerScreen> {
   @override
   void initState() {
     super.initState();
-    _player = AudioPlayer();
+    _initAudio();
+  }
 
-    _player.onDurationChanged.listen((d) => setState(() => _duration = d));
-    _player.onPositionChanged.listen((p) => setState(() => _position = p));
-    _player.onPlayerStateChanged.listen((state) {
-      setState(() => _isPlaying = state == PlayerState.playing);
+  Future<void> _initAudio() async {
+    // تنظیمات فعال‌سازی پخش در پس‌زمینه اندروید
+    await AudioPlayer.global.setAudioContext(
+      AudioContext(
+        android: const AudioContextAndroid(
+          isSpeakerphoneOn: false,
+          stayAwake: true,
+          contentType: AndroidContentType.music,
+          usageType: AndroidUsageType.media,
+          audioFocus: AndroidAudioFocus.gain,
+        ),
+      ),
+    );
+
+    _player.onDurationChanged.listen((d) {
+      if (mounted) setState(() => _duration = d);
+    });
+    _player.onPositionChanged.listen((p) {
+      if (mounted) setState(() => _position = p);
+    });
+    _player.onPlayerStateChanged.listen((s) {
+      if (mounted) setState(() => _isPlaying = s == PlayerState.playing);
     });
 
-    _player.play(DeviceFileSource(widget.filePath));
+    await _player.play(DeviceFileSource(widget.filePath));
   }
 
   @override
