@@ -527,15 +527,49 @@ class _HomeScreenState extends State<HomeScreen> {
   List<DriveItem> _lectures = [];
   List<DriveItem> _otherProducts = [];
   List<String> _readItemIds = [];
+  Set<String> _cachedFileNames = {};  
 
   @override
   void initState() {
     super.initState();
     WakelockPlus.enable(); // روشن نگه‌داشتن صفحه
     _loadReadItems();
+    _updateCachedFilesList(); // <--- این خط اضافه شود
     _fetchAllData();
     _checkDailyNotificationNotice();
   }
+  Future<void> _updateCachedFilesList() async {
+    try {
+      final dir = await getTemporaryDirectory();
+      final files = dir.listSync().whereType<File>().map((f) => f.uri.pathSegments.last).toSet();
+      if (mounted) {
+        setState(() {
+          _cachedFileNames = files;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error updating cached files: $e');
+    }
+  }
+
+  Future<void> _manageCacheLimit() async {
+    try {
+      final dir = await getTemporaryDirectory();
+      final List<FileSystemEntity> files = dir.listSync()
+        ..retainWhere((file) => file is File && (file.path.endsWith('.pdf') || file.path.endsWith('.mp3') || file.path.endsWith('.m4a') || file.path.endsWith('.wav')));
+      
+      if (files.length > 10) { // سقف ۱۰ فایل
+        files.sort((a, b) => a.statSync().modified.compareTo(b.statSync().modified));
+        final int deleteCount = files.length - 10;
+        for (int i = 0; i < deleteCount; i++) {
+          await files[i].delete();
+        }
+      }
+      await _updateCachedFilesList();
+    } catch (e) {
+      debugPrint('Cache management error: $e');
+    }
+  }  
 
   @override
   void dispose() {
@@ -591,10 +625,10 @@ class _HomeScreenState extends State<HomeScreen> {
       final List<FileSystemEntity> files = dir.listSync()
         ..retainWhere((file) => file is File && (file.path.endsWith('.pdf') || file.path.endsWith('.mp3') || file.path.endsWith('.m4a') || file.path.endsWith('.wav')));
       
-      if (files.length > 6) {
+      if (files.length > 10) {
         // مرتب‌سازی بر اساس زمان آخرین دسترسی/تغییر (قدیمی‌ترین در ابتدا)
         files.sort((a, b) => a.statSync().modified.compareTo(b.statSync().modified));
-        final int deleteCount = files.length - 6;
+        final int deleteCount = files.length - 10;
         for (int i = 0; i < deleteCount; i++) {
           await files[i].delete();
         }
@@ -637,23 +671,24 @@ class _HomeScreenState extends State<HomeScreen> {
       final filePath = '${dir.path}/$safeName';
       final file = File(filePath);
 
-      if (!await file.exists()) {
-        final url = 'https://docs.google.com/uc?export=download&id=${item.id}';
-        final res = await http.get(Uri.parse(url));
-        if (res.statusCode == 200) {
-          await file.writeAsBytes(res.bodyBytes);
-          await _manageCacheLimit(); // اعمال محدودیت ۶ فایل
-        } else {
-          throw Exception('خطا در دانلود فایل: ${res.statusCode}');
-        }
+    if (!await file.exists()) {
+      final downloadUrl =
+          'https://docs.google.com/uc?export=download&id=${item.id}';
+      final response = await http.get(Uri.parse(downloadUrl));
+      if (response.statusCode == 200) {
+        await file.writeAsBytes(response.bodyBytes);
+        await _manageCacheLimit(); // <--- ۱. پاکسازی فایل‌های مازاد سقف ۱۰ عدد
+      } else {
+        throw Exception('خطا در دریافت فایل (${response.statusCode})');
       }
+    }
 
-      // علامت‌گذاری به عنوان دریافت/خوانده‌شده
-      await _markAsRead(item.id);
+    await _markAsRead(item.id); // <--- ۲. ثبت به عنوان خوانده‌شده
+    await _updateCachedFilesList(); // <--- ۳. بروزرسانی آیکون‌های آفلاین در صفحه
 
-      if (!mounted) return;
-      Navigator.of(context, rootNavigator: true).pop(); // بستن دیالوگ لودینگ
-
+    if (!mounted) return;
+    Navigator.pop(context); // بستن لودینگ
+      
       if (isApk) {
         await OpenFilex.open(filePath);
       } else if (isPdf) {
@@ -1370,6 +1405,14 @@ Widget build(BuildContext context) {
         return _buildItemList(_otherProducts, isProductTab: true);
       default:
         return _buildItemList(_texts);
+        final item = items[index];
+        final bool isRead = _readItemIds.contains(item.id);
+        
+        String checkName = item.name.replaceAll(RegExp(r'\.bin$'), '');
+        if (_selectedIndex == 0 && !checkName.toLowerCase().endsWith('.pdf')) {
+          checkName += '.pdf';
+        }
+        final bool isOfflineReady = _cachedFileNames.contains(checkName);      
     }
   }
 
@@ -1432,24 +1475,38 @@ Widget build(BuildContext context) {
                   fontSize: 14,
                 ),
               ),
-              trailing: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  if (isRead) ...[
-                    const Icon(
+            trailing: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (isOfflineReady) ...[
+                  const Tooltip(
+                    message: 'آماده پخش آفلاین',
+                    child: Icon(
+                      Icons.offline_pin_rounded,
+                      color: Color(0xFF00E676),
+                      size: 20,
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                ],
+                if (isRead) ...[
+                  const Tooltip(
+                    message: 'مطالعه شده',
+                    child: Icon(
                       Icons.check_circle_rounded,
-                      color: Color(0xFF4CAF50), // تیک سبز
+                      color: Color(0xFF4CAF50),
                       size: 18,
                     ),
-                    const SizedBox(width: 8),
-                  ],
-                  const Icon(
-                    Icons.arrow_forward_ios_rounded,
-                    size: 16,
-                    color: Colors.white54,
                   ),
+                  const SizedBox(width: 6),
                 ],
-              ),
+                const Icon(
+                  Icons.arrow_forward_ios_rounded,
+                  size: 14,
+                  color: Colors.white38,
+                ),
+              ],
+            ),
               onTap: () => _downloadAndOpen(
                 item,
                 isApk: isProductTab,
