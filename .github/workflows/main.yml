@@ -34,9 +34,9 @@ jobs:
           set -e
 
           # انتخاب pubspec نهایی در صورت وجود؛ در غیر این صورت فایل استاندارد
-          if [ -f "pubspec.yaml" ]; then
-            echo "Copying pubspec.yaml..."
-            cp "pubspec.yaml" "app_build/pubspec.yaml"
+          if [ -f "pubspec-(4).yaml" ]; then
+            echo "Copying pubspec-(4).yaml..."
+            cp "pubspec-(4).yaml" "app_build/pubspec.yaml"
           elif [ -f "pubspec.yaml" ]; then
             echo "Copying pubspec.yaml..."
             cp "pubspec.yaml" "app_build/pubspec.yaml"
@@ -47,8 +47,8 @@ jobs:
           fi
 
           # انتخاب main نهایی در صورت وجود؛ در غیر این صورت فایل استاندارد
-          if [ -f "main.dart" ]; then
-            echo "Copying main.dart..."
+          if [ -f "main-(4).dart" ]; then
+            echo "Copying main-(4).dart..."
             cp "main-(4).dart" "app_build/lib/main.dart"
           elif [ -f "lib/main.dart" ]; then
             echo "Copying lib/main.dart..."
@@ -232,6 +232,51 @@ jobs:
 
           gradle_path.write_text(content, encoding="utf-8")
           print(f"Core Library Desugaring configured in {gradle_path}.")
+          EOF
+
+      - name: Force compileSdk 34 for all plugins (Fix syncfusion_flutter_pdfviewer)
+        run: |
+          set -e
+          python3 - << 'EOF'
+          from pathlib import Path
+
+          root_gradle = Path("app_build/android/build.gradle")
+          root_gradle_kts = Path("app_build/android/build.gradle.kts")
+
+          if root_gradle.exists():
+              print("Patching root build.gradle...")
+              override_code = """
+
+          subprojects {
+              afterEvaluate { project ->
+                  if (project.hasProperty('android')) {
+                      project.android {
+                          compileSdkVersion 34
+                      }
+                  }
+              }
+          }
+          """
+              with open(root_gradle, "a", encoding="utf-8") as f:
+                  f.write(override_code)
+              print("Successfully injected compileSdkVersion 34 into build.gradle")
+
+          elif root_gradle_kts.exists():
+              print("Patching root build.gradle.kts...")
+              override_code = """
+
+          subprojects {
+              afterEvaluate {
+                  if (project.extensions.findByName("android") != null) {
+                      val android = project.extensions.getByName("android") as com.android.build.gradle.BaseExtension
+                      android.compileSdkVersion(34)
+                  }
+              }
+          }
+          """
+              with open(root_gradle_kts, "a", encoding="utf-8") as f:
+                  f.write(override_code)
+              print("Successfully injected compileSdkVersion 34 into build.gradle.kts")
           EOF
 
       - name: Generate Launcher Icons
