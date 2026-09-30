@@ -24,10 +24,10 @@ const String scriptApiUrl = 'https://script.google.com/macros/s/AKfycbwBLyDbJu78
 // !!! آدرس وب‌اپ گوگل‌شیت خود را در متغیر زیر قرار دهید:
 const String reportScriptUrl = 'https://script.google.com/macros/s/AKfycbxCPa7OPOr2Koa9umXaSkd8xoMTvhpPlCNJKDvptSIOTNpRuy01r9N3s-AVuujd75L8/exec';
 
-const String ketabFolderId = '1R7LxofkSaSz5EGsgSv1TSbBAbJR_wE82';
-const String maghalehFolderId = '16aRam3dFDXiFl0bgQN-3a5iZP6Q4HPE9';
+const String sotFolderId = '1R7LxofkSaSz5EGsgSv1TSbBAbJR_wE82';     // پوشه سخنرانی‌ها و صوت‌ها
+const String motoonFolderId = '16aRam3dFDXiFl0bgQN-3a5iZP6Q4HPE9';  // پوشه متون و کتب
 const String otherProductsFolderId = '1GLHWFZK0fy74rCz2t-5h4T0UYiZnaZ94';
-const String announcementFileId = '1aDcz3OOlf8oGcYmqt7gt3pJXuJjQmasGN_YqpCrorjg'; // شناسه فایل متنی اطلاعیه در گوگل درایو
+const String announcementFileId = '1aDcz3OOlf8oGcYmqt7gt3pJXuJjQmasGN_YqpCrorjg'; 
 
 // لیست جملات کتاب «هزاران فکر عمیق» جهت نمایش در نوار پیمایش افقی (Marquee)
 const List<String> deepThoughtsQuotes = [
@@ -513,20 +513,17 @@ class _HomeScreenState extends State<HomeScreen> {
 
     try {
       final results = await Future.wait([
-        _fetchFolder(ketabFolderId),
-        _fetchFolder(maghalehFolderId),
+        _fetchFolder(sotFolderId),      // نتایج صوتی (سخنرانی‌ها)
+        _fetchFolder(motoonFolderId),   // نتایج متنی (PDF)
         _fetchFolder(otherProductsFolderId),
       ]);
 
+      if (!mounted) return;
+
       setState(() {
-        _texts = results[0];
-        _lectures = results[1];
+        _lectures = results[0];       // سخنرانی‌ها / صوت
+        _texts = results[1];          // متون
         _otherProducts = results[2];
-        _isLoading = false;
-      });
-    } catch (e) {
-      setState(() {
-        _errorMessage = 'خطای اتصال به اینترنت. لطفاً مجدداً بررسی نمایید.';
         _isLoading = false;
       });
     }
@@ -545,91 +542,129 @@ class _HomeScreenState extends State<HomeScreen> {
     return [];
   }
 
-  Future<void> _downloadAndOpen(DriveItem item, {bool isApk = false}) async {
+  Future<void> _downloadAndOpen(
+    DriveItem item, {
+    bool isApk = false,
+    bool isPdf = false,
+  }) async {
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) => const Center(
-        child: Card(
-          color: Color(0xFF27293D),
-          child: Padding(
-            padding: EdgeInsets.all(24.0),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                CircularProgressIndicator(color: Color(0xFFFF6B4A)),
-                SizedBox(height: 16),
-                Text('در حال دریافت و آماده‌سازی فایل...', style: TextStyle(color: Colors.white)),
-              ],
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1E293B),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const CircularProgressIndicator(color: Color(0xFFD4AF37)),
+            const SizedBox(height: 16),
+            Text(
+              'در حال بارگیری ${item.name}...',
+              style: const TextStyle(fontFamily: 'Vazir', color: Colors.white, fontSize: 13),
+              textAlign: TextAlign.center,
             ),
-          ),
+          ],
         ),
       ),
     );
 
     try {
-final downloadUrl = 'https://docs.google.com/uc?export=download&id=${item.id}';
-      final response = await http.get(Uri.parse(downloadUrl));
-      if (mounted) Navigator.pop(context);
+      final dir = await getTemporaryDirectory();
+      String safeName = item.name.replaceAll(RegExp(r'\.bin$', caseSensitive: false), '');
+      
+      // اگر از تب متون آمده یا فرمت PDF است و پسوند ندارد، پسوند اضافه شود
+      if ((isPdf || safeName.toLowerCase().contains('.pdf')) && !safeName.toLowerCase().endsWith('.pdf')) {
+        safeName = '$safeName.pdf';
+      }
 
-      if (response.statusCode == 200) {
-        final dir = await getApplicationDocumentsDirectory();
-        final safeName = item.name.replaceAll(RegExp(r'\.bin$', caseSensitive: false), '');
-        final file = File('${dir.path}/$safeName');
-        await file.writeAsBytes(response.bodyBytes);
+      final file = File('${dir.path}/$safeName');
 
-        _markAsRead(item.id);
-
-        if (!mounted) return;
-
-        if (isApk || safeName.toLowerCase().endsWith('.apk')) {
-          await OpenFilex.open(file.path);
-        } else if (safeName.toLowerCase().endsWith('.pdf')) {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => PdfViewerScreen(filePath: file.path, title: item.name),
-            ),
-          );
+      if (!await file.exists()) {
+        final downloadUrl = 'https://docs.google.com/uc?export=download&id=${item.id}';
+        final response = await http.get(Uri.parse(downloadUrl));
+        if (response.statusCode == 200) {
+          await file.writeAsBytes(response.bodyBytes);
         } else {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => AudioPlayerScreen(filePath: file.path, title: item.name),
-            ),
-          );
+          throw Exception('خطا در دریافت فایل (${response.statusCode})');
         }
+      }
+
+      if (!mounted) return;
+      Navigator.pop(context); // بستن پنجره لودینگ
+
+      // تصمیم‌گیری هوشمند برای باز کردن بر اساس نوع فایل و تب
+      if (isApk || safeName.toLowerCase().endsWith('.apk')) {
+        await OpenFilex.open(file.path);
+      } else if (isPdf || safeName.toLowerCase().endsWith('.pdf')) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => PdfViewerScreen(filePath: file.path, title: item.name),
+          ),
+        );
       } else {
-        _showSnackBar('خطا در بارگیری فایل از درگاه درایو');
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => AudioPlayerScreen(filePath: file.path, title: item.name),
+          ),
+        );
       }
     } catch (e) {
       if (mounted) {
-        Navigator.pop(context);
-        _showSnackBar('خطا در اتصال به اینترنت یا بارگذاری فایل');
+        Navigator.pop(context); // بستن پنجره لودینگ در صورت خطا
+        _showSnackBar('خطا در بارگیری محتوا: $e');
       }
     }
   }
 
   // مورد ۱: قابلیت «روزیِ من» (انتخاب تصادفی یک صوت یا متن)
   void _openDailyBlessing() {
-    List<DriveItem> pool = [..._texts, ..._lectures];
+    // انتخاب فقط از بین فایل‌های صوتی (سخنرانی‌ها)
+    List<DriveItem> pool = [..._lectures];
+
     if (pool.isEmpty) {
-      _showSnackBar('محتوا هنوز بارگذاری نشده است.');
+      _showSnackBar('محتوای صوتی هنوز بارگذاری نشده است یا در دسترس نیست.');
       return;
     }
 
     final randomItem = pool[Random().nextInt(pool.length)];
-    final bool isAudio = randomItem.name.toLowerCase().endsWith('.mp3');
 
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF27293D),
-        title: const Row(
+        backgroundColor: const Color(0xFF1E293B),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+          side: BorderSide(
+            color: const Color(0xFFD4AF37).withOpacity(0.5),
+            width: 1.5,
+          ),
+        ),
+        title: Row(
           children: [
-            Icon(Icons.card_giftcard, color: Color(0xFFFF6B4A)),
-            SizedBox(width: 8),
-            Text('روزیِ امروز شما', style: TextStyle(fontSize: 16)),
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: const Color(0xFFD4AF37).withOpacity(0.15),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.headphones,
+                color: Color(0xFFD4AF37),
+                size: 24,
+              ),
+            ),
+            const SizedBox(width: 12),
+            const Text(
+              'روزیِ صوتی امروز شما',
+              style: TextStyle(
+                fontFamily: 'Vazir',
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+              ),
+            ),
           ],
         ),
         content: Column(
@@ -637,25 +672,44 @@ final downloadUrl = 'https://docs.google.com/uc?export=download&id=${item.id}';
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
-              'امروز این تحفه‌ی فکری و معنوی برای شما انتخاب شده است:',
-              style: TextStyle(fontSize: 13, color: Colors.white70),
+              'یک قطعه صوتی به عنوان رزق معنوی و فکری امروز شما انتخاب شد:',
+              style: TextStyle(
+                fontFamily: 'Vazir',
+                fontSize: 13,
+                color: Colors.white70,
+                height: 1.5,
+              ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 14),
             Container(
+              width: double.infinity,
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: const Color(0xFF1E1E2E),
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: const Color(0xFFFF6B4A).withOpacity(0.5)),
+                color: const Color(0xFF0F172A),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: Colors.white.withOpacity(0.1),
+                ),
               ),
               child: Row(
                 children: [
-                  Icon(isAudio ? Icons.headphones : Icons.menu_book, color: const Color(0xFFFF6B4A)),
+                  const Icon(
+                    Icons.audiotrack,
+                    color: Color(0xFFD4AF37),
+                    size: 22,
+                  ),
                   const SizedBox(width: 10),
                   Expanded(
                     child: Text(
                       randomItem.name,
-                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                      style: const TextStyle(
+                        fontFamily: 'Vazir',
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
                 ],
@@ -666,15 +720,35 @@ final downloadUrl = 'https://docs.google.com/uc?export=download&id=${item.id}';
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('بعداً', style: TextStyle(color: Colors.white60)),
+            child: const Text(
+              'بعداً',
+              style: TextStyle(
+                fontFamily: 'Vazir',
+                color: Colors.white54,
+              ),
+            ),
           ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFFF6B4A)),
+          ElevatedButton.icon(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFD4AF37),
+              foregroundColor: Colors.black,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            ),
+            icon: const Icon(Icons.play_arrow, size: 20),
+            label: const Text(
+              'دریافت و پخش',
+              style: TextStyle(
+                fontFamily: 'Vazir',
+                fontWeight: FontWeight.bold,
+              ),
+            ),
             onPressed: () {
-              Navigator.pop(ctx);
-              _downloadAndOpen(randomItem);
+              Navigator.pop(ctx); // بستن پنجره روزی من
+              _downloadAndOpen(randomItem); // نمایش دیالوگ دانلود و سپس باز شدن و پخش در پلیر
             },
-            child: const Text('مشاهده و مطالعه', style: TextStyle(color: Colors.white)),
           ),
         ],
       ),
@@ -1053,42 +1127,6 @@ void _showFeedbackDialog() {
     );
   }
   
-  void _showCustomBottomSheetMenu() {
-    showModalBottomSheet(
-      context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (ctx) => Directionality(
-        textDirection: TextDirection.rtl,
-        child: SafeArea(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              _buildMenuSheetItem(
-                icon: Icons.help_outline,
-                title: 'راهنما',
-                subtitle: 'راهنمای کار با برنامه',
-                onTap: () {
-                  Navigator.pop(ctx);
-                  _showHelpDialog();
-                },
-              ),
-              _buildMenuSheetItem(
-                icon: Icons.feedback_outlined,
-                title: 'ارسال نظر و بازخورد',
-                subtitle: 'نظرات و پیشنهادات شما',
-                onTap: () {
-                  Navigator.pop(ctx);
-                  _showFeedbackDialog();
-                },
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
 // تابع تایید و بستن برنامه
 Future<void> _handleExit(BuildContext context) async {
   final bool? shouldExit = await showDialog<bool>(
@@ -1202,7 +1240,7 @@ Widget build(BuildContext context) {
           IconButton(
             icon: const Icon(Icons.more_vert),
             tooltip: 'بیشتر',
-            onPressed: _showCustomBottomSheetMenu,
+            onPressed: _showMoreMenuSheet, // <-- به متد منوی کامل متصل شد
           ),
         ],
       ),
@@ -1256,17 +1294,17 @@ Widget build(BuildContext context) {
   }
 
   Widget _buildTabBody() {
-    switch (_selectedIndex) {
+    switch (_selectedTabIndex) {
       case 0:
-        return _buildItemList(_texts, false);
+        return _buildItemList(_texts, false);     // تب متون (PDF)
       case 1:
-        return _buildItemList(_lectures, false);
+        return _buildItemList(_lectures, false);  // تب صوت / سخنرانی‌ها
       case 2:
         return const MbtiQuizScreen();
       case 3:
         return _buildItemList(_otherProducts, true);
       default:
-        return const SizedBox();
+        return const SizedBox.shrink();
     }
   }
 
@@ -1318,8 +1356,11 @@ Widget build(BuildContext context) {
                   ? const Text('جهت بارگیری و نصب لمس کنید', style: TextStyle(fontSize: 11, color: Colors.white54))
                   : null,
               trailing: const Icon(Icons.arrow_forward_ios, size: 14, color: Colors.white38),
-              onTap: () => _downloadAndOpen(item, isApk: isProductTab),
-            ),
+              onTap: () => _downloadAndOpen(
+                item, 
+                isApk: isProductTab,
+                isPdf: _selectedTabIndex == 0, // اگر تب اول (متون) انتخاب شده باشد، اجبار به باز شدن با PDF خوان
+              ),
           );
         },
       ),
