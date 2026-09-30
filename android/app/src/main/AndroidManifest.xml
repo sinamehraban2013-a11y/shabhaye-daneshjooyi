@@ -8,11 +8,42 @@
     <uses-permission android:name="android.permission.VIBRATE" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM"/>
+
+    <!-- مجوزهای تجمیع‌شده برای شناسایی مرورگرها، پیام‌رسان‌ها، ایمیل و باز کردن فایل‌ها -->
     <queries>
+        <!-- باز کردن وب‌سایت‌ها و لینک‌های اینترنتی -->
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <category android:name="android.intent.category.BROWSABLE" />
+            <data android:scheme="https" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <category android:name="android.intent.category.BROWSABLE" />
+            <data android:scheme="http" />
+        </intent>
+
+        <!-- ارسال ایمیل (فرم ارتباط با ما / بازخورد) -->
+        <intent>
+            <action android:name="android.intent.action.SENDTO" />
+            <data android:scheme="mailto" />
+        </intent>
+
+        <!-- باز کردن مستقیم اپلیکیشن ایتا -->
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="eitaa" />
+        </intent>
+
+        <!-- شناسایی برنامه‌های جانبی برای باز کردن فایل‌های صوتی/متنی -->
         <intent>
             <action android:name="android.intent.action.VIEW" />
             <data android:mimeType="*/*" />
         </intent>
+
+        <!-- پکیج‌های برنامه‌های پیام‌رسان -->
+        <package android:name="ir.eitaa.messenger" />
+        <package android:name="ir.ble.messenger" />
     </queries>
 
     <application
