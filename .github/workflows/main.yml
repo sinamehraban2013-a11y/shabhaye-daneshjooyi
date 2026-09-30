@@ -34,9 +34,9 @@ jobs:
           set -e
 
           # انتخاب pubspec نهایی در صورت وجود؛ در غیر این صورت فایل استاندارد
-          if [ -f "pubspec-(4).yaml" ]; then
-            echo "Copying pubspec-(4).yaml..."
-            cp "pubspec-(4).yaml" "app_build/pubspec.yaml"
+          if [ -f "pubspec.yaml" ]; then
+            echo "Copying pubspec.yaml..."
+            cp "pubspec.yaml" "app_build/pubspec.yaml"
           elif [ -f "pubspec.yaml" ]; then
             echo "Copying pubspec.yaml..."
             cp "pubspec.yaml" "app_build/pubspec.yaml"
@@ -47,8 +47,8 @@ jobs:
           fi
 
           # انتخاب main نهایی در صورت وجود؛ در غیر این صورت فایل استاندارد
-          if [ -f "main-(4).dart" ]; then
-            echo "Copying main-(4).dart..."
+          if [ -f "main.dart" ]; then
+            echo "Copying main.dart..."
             cp "main-(4).dart" "app_build/lib/main.dart"
           elif [ -f "lib/main.dart" ]; then
             echo "Copying lib/main.dart..."
