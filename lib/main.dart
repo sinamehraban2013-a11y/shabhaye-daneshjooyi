@@ -977,8 +977,8 @@ void _showFeedbackDialog() {
                     onTap: () {
                       Navigator.pop(ctx);
                       _openEitaaChannel(
-                        webUrl: 'https://eitaa.com/shiravi_ir',
-                        appUrl: 'eitaa://shiravi_ir',
+                        'eitaa://shiravi_ir',
+                        'https://eitaa.com/shiravi_ir',
                       );
                     },
                   ),
@@ -1002,8 +1002,8 @@ void _showFeedbackDialog() {
                     onTap: () {
                       Navigator.pop(ctx);
                       _openEitaaChannel(
-                        webUrl: 'https://eitaa.com/maghaleh_shiravi',
-                        appUrl: 'eitaa://maghaleh_shiravi',
+                        'eitaa://maghaleh_shiravi',
+                        'https://eitaa.com/maghaleh_shiravi',
                       );
                     },
                   ),
@@ -1016,8 +1016,8 @@ void _showFeedbackDialog() {
                     onTap: () {
                       Navigator.pop(ctx);
                       _openEitaaChannel(
-                        webUrl: 'https://eitaa.com/ketab_shiravi',
-                        appUrl: 'eitaa://ketab_shiravi',
+                        'eitaa://ketab_shiravi',
+                        'https://eitaa.com/ketab_shiravi',
                       );
                     },
                   ),
@@ -1325,40 +1325,30 @@ Widget build(BuildContext context) {
     );
   } // <--- ۱. این آکولاد بسته به عنوان پایان _buildItemList اضافه شد
 
-  Future<void> _openEitaaChannel(String appUrl, String webUrl) async {
-    final Uri appUri = Uri.parse(appUrl);
-    final Uri webUri = Uri.parse(webUrl);
+Future<void> _openEitaaChannel(String appUrl, String webUrl) async {
+  try {
+    final appUri = Uri.parse(appUrl);
+    final webUri = Uri.parse(webUrl);
 
-    try {
-      // ابتدا تلاش برای باز کردن مستقیم داخل اپلیکیشن ایتا
-      bool launched = await launchUrl(
-        appUri,
-        mode: LaunchMode.externalNonBrowserApplication,
-      );
-      if (launched) return;
-    } catch (_) {
-      // در صورت نبودن اپلیکیشن ایتا، خطا نادیده گرفته شده و به مرحله وب می‌رود
+    // ابتدا تلاش برای باز کردن مستقیم در اپلیکیشن ایتا
+    final launchedApp = await launchUrl(appUri, mode: LaunchMode.externalApplication);
+    if (!launchedApp) {
+      // در صورت عدم نصب یا خطا، باز شدن در مرورگر
+      await launchUrl(webUri, mode: LaunchMode.externalApplication);
     }
-
-    // اگر اپ ایتا باز نشد، لینک وب را در مرورگر باز کن
+  } catch (e) {
     try {
-      bool launchedWeb = await launchUrl(
-        webUri,
-        mode: LaunchMode.externalApplication,
-      );
-      if (!launchedWeb && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('امکان باز کردن این پیوند وجود ندارد.')),
-        );
-      }
-    } catch (e) {
+      final webUri = Uri.parse(webUrl);
+      await launchUrl(webUri, mode: LaunchMode.externalApplication);
+    } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('امکان باز کردن این پیوند وجود ندارد.')),
+          const SnackBar(content: Text('امکان باز کردن پیوند وجود ندارد')),
         );
       }
     }
   }
+}
 
   Future<void> _launchURL(String urlString) async {
     final Uri uri = Uri.parse(urlString);
