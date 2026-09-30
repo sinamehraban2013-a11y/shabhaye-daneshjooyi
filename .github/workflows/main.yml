@@ -102,7 +102,37 @@ jobs:
               "android.permission.POST_NOTIFICATIONS",
               "android.permission.SCHEDULE_EXACT_ALARM",
           ]
+      - name: Enable Core Library Desugaring in build.gradle
+        run: |
+          python3 - << 'EOF'
+          import re
 
+          gradle_path = "app_build/android/app/build.gradle"
+          with open(gradle_path, "r", encoding="utf-8") as f:
+              content = f.read()
+
+          # ۱. فعال‌سازی در compileOptions
+          if "coreLibraryDesugaringEnabled" not in content:
+              content = re.sub(
+                  r'(compileOptions\s*\{)',
+                  r'\1\n        coreLibraryDesugaringEnabled true',
+                  content
+              )
+
+          # ۲. اضافه کردن کتابخانه به dependencies
+          desugar_dep = "    coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.1.4'\n"
+          if "coreLibraryDesugaring" not in content:
+              if "dependencies {" in content:
+                  content = re.sub(r'(dependencies\s*\{)', r'\1\n' + desugar_dep, content)
+              else:
+                  content += f"\ndependencies {{\n{desugar_dep}}}\n"
+
+          with open(gradle_path, "w", encoding="utf-8") as f:
+              f.write(content)
+
+          print("Successfully enabled Core Library Desugaring in build.gradle")
+          EOF
+          
           missing_permissions = []
           for perm in permissions:
               if f'android:name="{perm}"' not in content:
