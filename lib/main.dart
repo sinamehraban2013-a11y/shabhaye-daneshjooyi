@@ -938,51 +938,118 @@ class _HomeScreenState extends State<HomeScreen> {
       builder: (ctx) => Directionality(
         textDirection: TextDirection.rtl,
         child: AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
           backgroundColor: const Color(0xFF27293D),
           title: const Row(
             children: [
-              Icon(Icons.help_outline, color: Color(0xFFFF6B4A), size: 26),
+              Icon(Icons.help_outline_rounded, color: Color(0xFFFF6B4A), size: 26),
               SizedBox(width: 8),
-              Text('راهنمای استفاده از برنامه', style: TextStyle(color: Colors.white, fontSize: 16)),
+              Text(
+                'راهنمای استفاده از برنامه',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
             ],
           ),
-          content: const SingleChildScrollView(
+          content: SingleChildScrollView(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  '1- برای استفاده از این برنامه کافی است روی آیکون قسمتهای مختلف برنامه در قسمت پایین آن کلید کنید. فهرست عناوین برای شما باز خواهد شد. هر کدام را مایل بودید انتخاب نموده و منتظر دانلود آن بمانید. سخنرانی ها به صورت خودکار پخش خواهند شد. متون به صورت فایلهای پی دی اف در کتابخوان همین برنامه باز خواهد شد.',
-                  style: TextStyle(color: Colors.white70, fontSize: 12.5, height: 1.6),
+                _buildHelpItem(
+                  number: '۱',
+                  text:
+                      'برای استفاده از این برنامه کافی است روی آیکون بخش‌های مختلف در نوار پایین ضربه بزنید. فهرست عناوین برای شما باز خواهد شد. هر کدام را مایل بودید انتخاب نموده و منتظر دانلود آن بمانید؛ سخنرانی‌ها به‌صورت خودکار پخش شده و متون در کتابخوان داخلی باز می‌شوند.',
                 ),
-                SizedBox(height: 12),
-                Text(
-                  '2- روزی هر روز شما به صورت تصادفی با زدن کلید مربوط در ذیل صفحه برای شما نمایش داده خواهد شد.',
-                  style: TextStyle(color: Colors.white70, fontSize: 12.5, height: 1.6),
+                const SizedBox(height: 12),
+                _buildHelpItem(
+                  number: '۲',
+                  text:
+                      '«روزیِ روزانه» شما به‌صورت تصادفی با فشردن دکمه مربوطه در پایین صفحه نمایش داده خواهد شد.',
                 ),
-                SizedBox(height: 12),
-                Text(
-                  '3- از قسمت سه نقطه بالا می توانید با ما در ارتباط باشید و ما را در شبکه های مجازی جستجو کنید.',
-                  style: TextStyle(color: Colors.white70, fontSize: 12.5, height: 1.6),
+                const SizedBox(height: 12),
+                _buildHelpItem(
+                  number: '۳',
+                  text:
+                      'از منوی سه‌نقطه بالای صفحه می‌توانید با ما در ارتباط باشید و شبکه‌های مجازی ما را دنبال کنید.',
                 ),
-                SizedBox(height: 12),
-                Text(
-                  '4- برای دریافت اطلاعیه ها و موارد جدید، لطفا روی علامت شیپور کلیک کنید.',
-                  style: TextStyle(color: Colors.white70, fontSize: 12.5, height: 1.6),
+                const SizedBox(height: 12),
+                _buildHelpItem(
+                  number: '۴',
+                  text:
+                      'برای دریافت آخرین اطلاعیه‌ها و پیام‌های جدید، روی علامت شیپور در بالای صفحه کلیک کنید.',
                 ),
               ],
             ),
           ),
+          actionsPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: const Text('بستن', style: TextStyle(color: Color(0xFFFF6B4A))),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFFFF6B4A),
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  padding: const EdgeInsets.symmetric(vertical: 10),
+                  elevation: 2,
+                ),
+                onPressed: () => Navigator.pop(ctx),
+                icon: const Icon(Icons.close_rounded, size: 20),
+                label: const Text(
+                  'بستن',
+                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                ),
+              ),
             ),
           ],
         ),
       ),
     );
   }
+
+  // متد کمکی جهت چیدمان منظم هر بند راهنما با تراز کامل و شماره فارسی
+  Widget _buildHelpItem({required String number, required String text}) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          margin: const EdgeInsets.only(top: 2),
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+          decoration: BoxDecoration(
+            color: const Color(0xFFFF6B4A).withOpacity(0.18),
+            borderRadius: BorderRadius.circular(6),
+            border: Border.all(color: const Color(0xFFFF6B4A).withOpacity(0.4)),
+          ),
+          child: Text(
+            number,
+            style: const TextStyle(
+              color: Color(0xFFFF6B4A),
+              fontSize: 12,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            text,
+            textAlign: TextAlign.justify,
+            style: const TextStyle(
+              color: Colors.white70,
+              fontSize: 12.5,
+              height: 1.65,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
             
 void _showFeedbackDialog() {
     final textController = TextEditingController();
@@ -998,7 +1065,7 @@ void _showFeedbackDialog() {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const Text('نظرات، پیشنهادات و انتقادات خود را برای ما نوشته و ارسال کنید:'),
+                const Text('نظرات، پیشنهادات و مطالب خود را برای ما نوشته و ارسال کنید:'),
                 const SizedBox(height: 12),
                 TextField(
                   controller: textController,
