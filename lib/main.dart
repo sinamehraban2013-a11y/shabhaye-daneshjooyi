@@ -57,64 +57,97 @@ const List<String> dailyMotivationMessages = [
   'روزی معنوی و فکری امروز شما آماده است؛ همین حالا نرم‌افزار را باز کنید. 📖',
 ];
 
-final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
+final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
+    FlutterLocalNotificationsPlugin();
 
 Future<void> setupDailyNotifications() async {
   try {
+    // ۱. مقداردهی اولیه منطقه زمانی محلی
     tz.initializeTimeZones();
-    try {
-      tz.setLocalLocation(tz.getLocation('Asia/Tehran'));
-    } catch (_) {
-      // در صورت عدم شناسایی منطقه، زمان محلی دستگاه استفاده می‌شود
-    }
 
+    // تنظیم زمان محلی مطابق با افست ساعت خودِ دستگاه کاربر
+    final nowLocal = DateTime.now();
+    final localLocation = tz.getLocation(tz.local.name);
+    tz.setLocalLocation(localLocation);
+
+    // ۲. تنظیمات اجرای نوتیفیکیشن و باز شدن برنامه با کلیک
     const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
     const initSettings = InitializationSettings(android: androidSettings);
-    await flutterLocalNotificationsPlugin.initialize(initSettings);
 
+    await flutterLocalNotificationsPlugin.initialize(
+      initSettings,
+      onDidReceiveNotificationResponse: (NotificationResponse response) {
+        // با لمس نوتیفیکیشن، اپلیکیشن در صفحه اصلی فراخوانی و باز می‌شود
+        debugPrint('Notification clicked: ${response.payload}');
+      },
+    );
+
+    // ۳. اخذ کلیه مجوزهای لازم در اندروید ۱۳ و مجوز آلارم دقیق در اندروید ۱۲+
     final androidPlugin = flutterLocalNotificationsPlugin
         .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
-    await androidPlugin?.requestNotificationsPermission();
 
-    final now = tz.TZDateTime.now(tz.local);
+    if (androidPlugin != null) {
+      await androidPlugin.requestNotificationsPermission();
+      // درخواست دسترسی دقیق برای دور زدن مدیریت انرژی و تاخیر باتری
+      await androidPlugin.requestExactAlarmsPermission();
+    }
 
+    // ۴. پاکسازی زمان‌بندی‌های پیشین جهت جلوگیری از تداخل شناسه‌ها
     for (int i = 0; i < 7; i++) {
-      int targetDay = (i == 0) ? 7 : i;
+      await flutterLocalNotificationsPlugin.cancel(100 + i);
+    }
 
-      var scheduledDate = tz.TZDateTime(
-        tz.local,
-        now.year,
-        now.month,
-        now.day,
-        17,
-        0,
-      );
+    // ۵. زمان‌بندی دقیق ۷ روز آینده (راس ساعت ۱۷ بر مبنای ساعت دستگاه)
+    DateTime anchor = DateTime(
+      nowLocal.year,
+      nowLocal.month,
+      nowLocal.day,
+      17,
+      0,
+    );
 
-      while (scheduledDate.weekday != targetDay || scheduledDate.isBefore(now)) {
-        scheduledDate = scheduledDate.add(const Duration(days: 1));
-      }
+    // اگر ساعت ۱۷ امروز گذشته، چرخه از فردا ساعت ۱۷ شروع می‌شود
+    if (nowLocal.isAfter(anchor)) {
+      anchor = anchor.add(const Duration(days: 1));
+    }
+
+    // تنظیم جزئیات اعلان با بالاترین اولویت سیستمی
+    const notificationDetails = NotificationDetails(
+      android: AndroidNotificationDetails(
+        'daily_reminder_channel_v2',
+        'یادآورهای روزانه شب‌های دانشجویی',
+        channelDescription: 'پیام‌های انگیزشی و یادآوری رأس ساعت ۱۷',
+        importance: Importance.max,
+        priority: Priority.high,
+        ticker: 'شب‌های دانشجویی',
+        playSound: true,
+        enableVibration: true,
+        fullScreenIntent: false,
+        category: AndroidNotificationCategory.reminder,
+        visibility: NotificationVisibility.public,
+      ),
+    );
+
+    // برنامه‌ریزی ۷ روز متوالی؛ با پایان روز هفتم مجدداً تکرار هفتگی ادامه می‌یابد
+    for (int i = 0; i < 7; i++) {
+      final scheduledDay = anchor.add(Duration(days: i));
+
+      // تبدیل زمان محلی دقیق دستگاه به TZDateTime
+      final tzScheduledDate = tz.TZDateTime.from(scheduledDay, tz.local);
 
       await flutterLocalNotificationsPlugin.zonedSchedule(
         100 + i,
         'شب‌های دانشجویی 🌙',
         dailyMotivationMessages[i],
-        scheduledDate,
-        const NotificationDetails(
-          android: AndroidNotificationDetails(
-            'daily_reminder_channel',
-            'یادآورهای روزانه',
-            channelDescription: 'پیام‌های انگیزشی و یادآوری هفتگی ساعت ۱۷',
-            importance: Importance.max,
-            priority: Priority.high,
-            playSound: true,
-          ),
-        ),
-        androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+        tzScheduledDate,
+        notificationDetails,
+        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle, // عبور از بهینه‌سازی باتری
         uiLocalNotificationDateInterpretation:
             UILocalNotificationDateInterpretation.absoluteTime,
-        matchDateTimeComponents: DateTimeComponents.dayOfWeekAndTime,
+        matchDateTimeComponents: DateTimeComponents.dayOfWeekAndTime, // تکرار هفتگی بی‌نهایت
       );
     }
+    debugPrint('All 7 daily notifications scheduled successfully at 17:00.');
   } catch (e) {
     debugPrint('Notification setup error: $e');
   }
