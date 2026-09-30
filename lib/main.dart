@@ -23,8 +23,8 @@ const String scriptApiUrl = 'https://script.google.com/macros/s/AKfycbwBLyDbJu78
 // !!! آدرس وب‌اپ گوگل‌شیت خود را در متغیر زیر قرار دهید:
 const String reportScriptUrl = 'https://script.google.com/macros/s/AKfycbxCPa7OPOr2Koa9umXaSkd8xoMTvhpPlCNJKDvptSIOTNpRuy01r9N3s-AVuujd75L8/exec';
 
-const String ketabFolderId = '1J3N_YOUR_KETAB_FOLDER_ID';
-const String maghalehFolderId = '1K4M_YOUR_MAGHALEH_FOLDER_ID';
+const String ketabFolderId = '1R7LxofkSaSz5EGsgSv1TSbBAbJR_wE82';
+const String maghalehFolderId = '16aRam3dFDXiFl0bgQN-3a5iZP6Q4HPE9';
 const String otherProductsFolderId = '1GLHWFZK0fy74rCz2t-5h4T0UYiZnaZ94';
 const String announcementFileId = '1aDcz3OOlf8oGcYmqt7gt3pJXuJjQmasGN_YqpCrorjg'; // شناسه فایل متنی اطلاعیه در گوگل درایو
 
@@ -849,7 +849,7 @@ void _showFeedbackDialog() {
                   scheme: 'mailto',
                   path: 'm_khozani@yahoo.com',
                   queryParameters: {
-                    'subject': 'نظر کاربر در بازی پازل',
+                    'subject': 'نظر کاربر برنامه شبهای دانشجویی',
                     'body': message,
                   },
                 );
