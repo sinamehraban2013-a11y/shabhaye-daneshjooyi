@@ -443,24 +443,12 @@ class _QuoteMarqueeState extends State<QuoteMarquee> {
       height: 38,
       decoration: const BoxDecoration(
         color: Color(0xFF27293D),
-        border: Border(bottom: BorderSide(color: Color(0x33FF6B4A), width: 1.0)),
+        border: Border(
+          bottom: BorderSide(color: Color(0x33FF6B4A), width: 1.0),
+        ),
       ),
       child: Row(
         children: [
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10),
-            color: const Color(0xFF1F1D2B),
-            child: const Row(
-              children: [
-                Icon(Icons.format_quote, size: 16, color: Color(0xFFFF6B4A)),
-                SizedBox(width: 4),
-                Text(
-                  'هزاران فکر عمیق:',
-                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFFFF6B4A)),
-                ),
-              ],
-            ),
-          ),
           Expanded(
             child: ListView(
               controller: _scrollController,
@@ -470,7 +458,10 @@ class _QuoteMarqueeState extends State<QuoteMarquee> {
                 Center(
                   child: Text(
                     _allText,
-                    style: const TextStyle(fontSize: 12, color: Colors.white70),
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: Colors.white70,
+                    ),
                   ),
                 ),
               ],
@@ -1146,48 +1137,74 @@ Widget build(BuildContext context) {
       _handleExit(context); // هنگام زدن کلید Back، دیالوگ باز می‌شود
     },
     child: Scaffold(
-        appBar: AppBar(
-          title: _isSearching
-              ? TextField(
-                  controller: _searchController,
-                  autofocus: true,
-                  style: const TextStyle(color: Colors.white),
-                  decoration: const InputDecoration(
-                    hintText: 'جستجو در عناوین...',
-                    hintStyle: TextStyle(color: Colors.white54),
-                    border: InputBorder.none,
-                  ),
-                  onChanged: (val) => setState(() => _searchQuery = val.trim().toLowerCase()),
-                )
-              : const Text('شب‌های دانشجویی'),
-          actions: [
+      appBar: AppBar(
+        centerTitle: true,
+        // ۱. انتقال دکمه‌های ذره‌بین و شیپور به سمت راست عنوان
+        leadingWidth: _isSearching ? 56 : 96,
+        leading: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
             IconButton(
               icon: Icon(_isSearching ? Icons.close : Icons.search),
+              tooltip: _isSearching ? 'بستن جستجو' : 'جستجو',
               onPressed: () {
                 setState(() {
                   _isSearching = !_isSearching;
-                  _searchQuery = '';
-                  _searchController.clear();
+                  if (!_isSearching) {
+                    _searchController.clear();
+                    _searchQuery = '';
+                  }
                 });
               },
             ),
-            IconButton(
-              icon: const Icon(Icons.campaign_outlined), // نشان اعلان (شیپور)
-              tooltip: 'اعلانات',
-              onPressed: _showNotificationNotice,
-            ),
-            IconButton(
-              icon: const Icon(Icons.help_outline), // راهنما
-              tooltip: 'راهنما',
-              onPressed: _showHelpDialog,
-            ),
-            IconButton(
-              icon: const Icon(Icons.more_vert),
-              tooltip: 'بیشتر',
-              onPressed: _showMoreMenuSheet,
-            ),
+            if (!_isSearching)
+              IconButton(
+                icon: const Icon(Icons.campaign_outlined),
+                tooltip: 'اطلاعیه‌ها',
+                onPressed: _showNotificationNotice,
+              ),
           ],
         ),
+
+        // ۲. عنوان صفحه (در مرکز قرار می‌گیرد)
+        title: _isSearching
+            ? TextField(
+                controller: _searchController,
+                autofocus: true,
+                style: const TextStyle(color: Colors.white, fontSize: 14),
+                decoration: const InputDecoration(
+                  hintText: 'جستجو در عناوین...',
+                  hintStyle: TextStyle(color: Colors.white60, fontSize: 13),
+                  border: InputBorder.none,
+                ),
+                onChanged: (val) {
+                  setState(() {
+                    _searchQuery = val.trim();
+                  });
+                },
+              )
+            : const Text(
+                'شب‌های دانشجویی',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 18,
+                ),
+              ),
+
+        // ۳. باقی‌مانده دکمه‌ها در سمت چپ (راهنما و منوی سه نقطه)
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.help_outline),
+            tooltip: 'راهنما',
+            onPressed: _showHelpDialog,
+          ),
+          IconButton(
+            icon: const Icon(Icons.more_vert),
+            tooltip: 'بیشتر',
+            onPressed: _showCustomBottomSheetMenu,
+          ),
+        ],
+      ),
         body: Column(
           children: [
             const QuoteMarquee(), // مورد ۹: نوار پیمایش افقی جملات
