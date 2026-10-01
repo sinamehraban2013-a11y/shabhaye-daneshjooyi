@@ -25,8 +25,8 @@ const String scriptApiUrl = 'https://script.google.com/macros/s/AKfycbwBLyDbJu78
 // !!! آدرس وب‌اپ گوگل‌شیت خود را در متغیر زیر قرار دهید:
 const String reportScriptUrl = 'https://script.google.com/macros/s/AKfycbxCPa7OPOr2Koa9umXaSkd8xoMTvhpPlCNJKDvptSIOTNpRuy01r9N3s-AVuujd75L8/exec';
 
-const String sotFolderId = 'secret-292c83ea';     // پوشه سخنرانی‌ها و صوت‌ها
-const String motoonFolderId = 'secret-2c61465c';  // پوشه متون و کتب
+const String sotFolderId = '16aRam3dFDXiFl0bgQN-3a5iZP6Q4HPE9';     // پوشه سخنرانی‌ها و صوت‌ها
+const String motoonFolderId = '1R7LxofkSaSz5EGsgSv1TSbBAbJR_wE82';  // پوشه متون و کتب
 const String otherProductsFolderId = '1GLHWFZK0fy74rCz2t-5h4T0UYiZnaZ94';
 const String announcementFileId = '1aDcz3OOlf8oGcYmqt7gt3pJXuJjQmasGN_YqpCrorjg'; 
 
@@ -444,7 +444,7 @@ class _QuoteMarqueeState extends State<QuoteMarquee> {
   void initState() {
     super.initState();
     // ۱۵ کاراکتر فاصله بین هر جمله
-    _allText = deepThoughtsQuotes.join('               ') + '               ';
+    _allText = deepThoughtsQuotes.join('               ') + '  *****  ';
     WidgetsBinding.instance.addPostFrameCallback((_) => _startScrolling());
   }
 
