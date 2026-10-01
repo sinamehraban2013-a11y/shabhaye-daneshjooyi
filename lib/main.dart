@@ -1856,7 +1856,10 @@ Widget _buildTabBody() {
     case 2:
       return const MbtiQuizScreen();
     case 3:
-      return _buildItemList(_filterItems(_texts));
+      return _buildItemList(
+        _filterItems(_otherProducts),
+        isProductTab: true, // ✅ اتصال به لیست محصولات و فعال‌سازی منطق APK
+      );
     default:
       return const SizedBox.shrink();
   }
