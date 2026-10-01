@@ -2685,15 +2685,6 @@ class _MbtiQuizScreenState extends State<MbtiQuizScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
-                        BoxShadow(
-                          color: primaryColor.withOpacity(0.18),
-                          blurRadius: 28,
-                          offset: const Offset(0, 10),
-                        ),
-                      ],
-                    ),
-                    child: Column(
-                      children: [
                         Container(
                           padding: const EdgeInsets.all(16),
                           decoration: BoxDecoration(
@@ -2725,7 +2716,7 @@ class _MbtiQuizScreenState extends State<MbtiQuizScreen> {
                         ),
                         const SizedBox(height: 10),
                         Text(
-                          details['title']!,
+                          details['title'] ?? '',
                           textAlign: TextAlign.center,
                           style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white),
                         ),
@@ -2741,7 +2732,7 @@ class _MbtiQuizScreenState extends State<MbtiQuizScreen> {
                         ),
                         const SizedBox(height: 18),
                         Text(
-                          details['desc']!,
+                          details['desc'] ?? '',
                           textAlign: TextAlign.justify,
                           style: const TextStyle(fontSize: 15, height: 1.8, color: Color(0xFFE0E0E0)),
                         ),
@@ -2761,9 +2752,10 @@ class _MbtiQuizScreenState extends State<MbtiQuizScreen> {
                       ),
                       onPressed: _resetQuiz,
                       icon: const Icon(Icons.refresh_rounded),
-                      label: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold) != null
-                          ? const Text('آزمون مجدد', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold))
-                          : const SizedBox(),
+                      label: const Text(
+                        'آزمون مجدد',
+                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                      ),
                     ),
                   ),
                 ],
@@ -2773,7 +2765,6 @@ class _MbtiQuizScreenState extends State<MbtiQuizScreen> {
         ),
       );
     }
-
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Column(
