@@ -2197,17 +2197,257 @@ class _AudioPlayerScreenState extends State<AudioPlayerScreen> {
 // ==========================================
 // صفحه نمایش PDF
 // ==========================================
-class PdfViewerScreen extends StatelessWidget {
+class PdfViewerScreen extends StatefulWidget {
   final String filePath;
   final String title;
 
-  const PdfViewerScreen({super.key, required this.filePath, required this.title});
+  const PdfViewerScreen({
+    super.key,
+    required this.filePath,
+    required this.title,
+  });
+
+  @override
+  State<PdfViewerScreen> createState() => _PdfViewerScreenState();
+}
+
+class _PdfViewerScreenState extends State<PdfViewerScreen> {
+  late PdfViewerController _pdfViewerController;
+  PdfTextSearchResult _searchResult = PdfTextSearchResult();
+  
+  bool _isSearchOpen = false;
+  final TextEditingController _searchController = TextEditingController();
+  
+  int _currentPage = 1;
+  int _pageCount = 0;
+  bool _isHorizontal = true; // حالت پیش‌فرض: ورق زدن افقی مثل کتاب
+
+  @override
+  void initState() {
+    super.initState();
+    _pdfViewerController = PdfViewerController();
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    _pdfViewerController.dispose();
+    super.dispose();
+  }
+
+  void _showJumpToPageDialog() {
+    final pageInputController = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text(
+            'رفتن به صفحه',
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          ),
+          content: TextField(
+            controller: pageInputController,
+            keyboardType: TextInputType.number,
+            autofocus: true,
+            textAlign: TextAlign.center,
+            decoration: InputDecoration(
+              hintText: 'شماره صفحه (۱ تا $_pageCount)',
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('انصراف'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                final page = int.tryParse(pageInputController.text);
+                if (page != null && page >= 1 && page <= _pageCount) {
+                  _pdfViewerController.jumpToPage(page);
+                  Navigator.pop(context);
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('شماره صفحه نامعتبر است')),
+                  );
+                }
+              },
+              child: const Text('برو'),
+            ),
+          ],
+        );
+      },
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text(title, style: const TextStyle(fontSize: 15))),
-      body: SfPdfViewer.file(File(filePath)),
+      backgroundColor: const Color(0xFF1E1E1E),
+      appBar: AppBar(
+        title: _isSearchOpen
+            ? TextField(
+                controller: _searchController,
+                autofocus: true,
+                style: const TextStyle(color: Colors.white, fontSize: 14),
+                decoration: const InputDecoration(
+                  hintText: 'جستجوی کلمه در متن...',
+                  hintStyle: TextStyle(color: Colors.white70),
+                  border: InputBorder.none,
+                ),
+                onSubmitted: (query) async {
+                  if (query.trim().isNotEmpty) {
+                    _searchResult = await _pdfViewerController.searchText(query);
+                    setState(() {});
+                  }
+                },
+              )
+            : Text(
+                widget.title,
+                style: const TextStyle(fontSize: 14),
+                overflow: TextOverflow.ellipsis,
+              ),
+        actions: [
+          if (_isSearchOpen) ...[
+            IconButton(
+              icon: const Icon(Icons.arrow_upward),
+              tooltip: 'قبلی',
+              onPressed: () => _searchResult.previousInstance(),
+            ),
+            IconButton(
+              icon: const Icon(Icons.arrow_downward),
+              tooltip: 'بعدی',
+              onPressed: () => _searchResult.nextInstance(),
+            ),
+            IconButton(
+              icon: const Icon(Icons.close),
+              onPressed: () {
+                setState(() {
+                  _isSearchOpen = false;
+                  _searchResult.clear();
+                  _searchController.clear();
+                });
+              },
+            ),
+          ] else ...[
+            IconButton(
+              icon: const Icon(Icons.search),
+              tooltip: 'جستجو در متن',
+              onPressed: () {
+                setState(() {
+                  _isSearchOpen = true;
+                });
+              },
+            ),
+            IconButton(
+              icon: Icon(_isHorizontal ? Icons.swap_vert : Icons.swap_horiz),
+              tooltip: _isHorizontal ? 'تغییر به اسکرول عمودی' : 'تغییر به ورق‌زدن افقی',
+              onPressed: () {
+                setState(() {
+                  _isHorizontal = !_isHorizontal;
+                });
+              },
+            ),
+          ],
+        ],
+      ),
+      body: Stack(
+        children: [
+          // نمایشگر اصلی PDF
+          SfPdfViewer.file(
+            File(widget.filePath),
+            controller: _pdfViewerController,
+            enableTextSelection: true, // امکان های‌لایت و کپی متن
+            pageLayoutMode: _isHorizontal
+                ? PdfPageLayoutMode.single
+                : PdfPageLayoutMode.continuous,
+            scrollDirection: _isHorizontal
+                ? PdfScrollDirection.horizontal
+                : PdfScrollDirection.vertical,
+            onDocumentLoaded: (PdfDocumentLoadedDetails details) {
+              setState(() {
+                _pageCount = details.document.pages.count;
+              });
+            },
+            onPageChanged: (PdfPageChangedDetails details) {
+              setState(() {
+                _currentPage = details.newPageNumber;
+              });
+            },
+          ),
+
+          // نوار ابزار شیشه‌ای و مدرن در پایین صفحه
+          Positioned(
+            left: 16,
+            right: 16,
+            bottom: 16,
+            child: SafeArea(
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                decoration: BoxDecoration(
+                  color: Colors.black.withOpacity(0.78),
+                  borderRadius: BorderRadius.circular(30),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.3),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    // زوم اوت
+                    IconButton(
+                      icon: const Icon(Icons.zoom_out, color: Colors.white),
+                      tooltip: 'کوچک‌نمایی',
+                      onPressed: () {
+                        _pdfViewerController.zoomLevel =
+                            (_pdfViewerController.zoomLevel - 0.25).clamp(1.0, 3.0);
+                      },
+                    ),
+
+                    // شماره صفحه و دکمه پرش به صفحه
+                    InkWell(
+                      onTap: _pageCount > 0 ? _showJumpToPageDialog : null,
+                      borderRadius: BorderRadius.circular(12),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.menu_book, color: Colors.amber, size: 18),
+                            const SizedBox(width: 6),
+                            Text(
+                              '$_currentPage / $_pageCount',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 13,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+
+                    // زوم این
+                    IconButton(
+                      icon: const Icon(Icons.zoom_in, color: Colors.white),
+                      tooltip: 'بزرگ‌نمایی',
+                      onPressed: () {
+                        _pdfViewerController.zoomLevel =
+                            (_pdfViewerController.zoomLevel + 0.25).clamp(1.0, 3.0);
+                      },
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
