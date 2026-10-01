@@ -2451,7 +2451,7 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
 }
 
 // ==========================================
-// صفحه و منطق تست شخصیت‌شناسی MBTI
+// صفحه و منطق تست شخصیت‌شناسی MBTI (پالت گرم و روشن)
 // ==========================================
 
 class MbtiQuestion {
@@ -2484,44 +2484,44 @@ class _MbtiQuizScreenState extends State<MbtiQuizScreen> {
 
   static const List<MbtiQuestion> questions = [
     // بخش اول: E یا I
-    MbtiQuestion(title: 'بخش اول: برون‌گرایی (E) یا درون‌گرایی (I) - سوال ۱', optA: 'بعد از یک مهمانی شلوغ، احساس سرزندگی می‌کنم', optB: 'بعد از یک مهمانی شلوغ، احساس خستگی می‌کنم', typeA: 'E', typeB: 'I'),
-    MbtiQuestion(title: 'بخش اول: برون‌گرایی (E) یا درون‌گرایی (I) - سوال ۲', optA: 'ترجیح می‌دهم در گروه فکر کنم و حرف بزنم', optB: 'ترجیح می‌دهم اول تنها فکر کنم، بعد بگویم', typeA: 'E', typeB: 'I'),
-    MbtiQuestion(title: 'بخش اول: برون‌گرایی (E) یا درون‌گرایی (I) - سوال ۳', optA: 'دوستان زیادی دارم و راحت آشنا می‌شوم', optB: 'دوستان کمی دارم اما روابطم عمیق است', typeA: 'E', typeB: 'I'),
-    MbtiQuestion(title: 'بخش اول: برون‌گرایی (E) یا درون‌گرایی (I) - سوال ۴', optA: 'سکوت در جمع برایم ناراحت‌کننده است', optB: 'سکوت در جمع برایم طبیعی و راحت است', typeA: 'E', typeB: 'I'),
-    MbtiQuestion(title: 'بخش اول: برون‌گرایی (E) یا درون‌گرایی (I) - سوال ۵', optA: 'وقتی تنها هستم، دنبال کاری برای انجام دادن می‌گردم', optB: 'وقتی تنها هستم، از آن لذت می‌برم', typeA: 'E', typeB: 'I'),
-    MbtiQuestion(title: 'بخش اول: برون‌گرایی (E) یا درون‌گرایی (I) - سوال ۶', optA: 'در جمع انرژی می‌گیرم', optB: 'در خلوت انرژی می‌گیرم', typeA: 'E', typeB: 'I'),
-    MbtiQuestion(title: 'بخش اول: برون‌گرایی (E) یا درون‌گرایی (I) - سوال ۷', optA: 'ترجیح می‌دهم با تلفن صحبت کنم', optB: 'ترجیح می‌دهم پیام بدهم', typeA: 'E', typeB: 'I'),
-    MbtiQuestion(title: 'بخش اول: برون‌گرایی (E) یا درون‌گرایی (I) - سوال ۸', optA: 'اغلب قبل از فکر کردن حرف می‌زنم', optB: 'اغلب قبل از حرف زدن فکر می‌کنم', typeA: 'E', typeB: 'I'),
+    MbtiQuestion(title: 'بخش اول: برون‌گرایی (E) یا درون‌گرایی (I) - سوال ۱', optA: 'بعد از یک مهمانی شلوغ، احساس سرزندگی و پرانرژی بودن می‌کنم', optB: 'بعد از یک مهمانی شلوغ، احساس خستگی می‌کنم و نیاز به تنهایی دارم', typeA: 'E', typeB: 'I'),
+    MbtiQuestion(title: 'بخش اول: برون‌گرایی (E) یا درون‌گرایی (I) - سوال ۲', optA: 'ترجیح می‌دهم در گفت‌وگوی گروهی فکر کنم و با صدای بلند ایده بدهم', optB: 'ترجیح می‌دهم ابتدا در خلوت فکر کنم، سپس نظرم را مطرح کنم', typeA: 'E', typeB: 'I'),
+    MbtiQuestion(title: 'بخش اول: برون‌گرایی (E) یا درون‌گرایی (I) - سوال ۳', optA: 'دایره آشنایان بسیار گسترده‌ای دارم و به سرعت دوست پیدا می‌کنم', optB: 'دوستان معدود اما پیوندهای بسیار عمیق و پایدار دارم', typeA: 'E', typeB: 'I'),
+    MbtiQuestion(title: 'بخش اول: برون‌گرایی (E) یا درون‌گرایی (I) - سوال ۴', optA: 'سکوت طولانی در جمع را ترجیح می‌دهم با صحبت بشکنم', optB: 'سکوت در جمع برایم کاملاً طبیعی، مطبوع و پذیرفته‌شده است', typeA: 'E', typeB: 'I'),
+    MbtiQuestion(title: 'بخش اول: برون‌گرایی (E) یا درون‌گرایی (I) - سوال ۵', optA: 'هنگام تنهایی به دنبال ارتباط، گفتگو و تعامل با دیگرانم', optB: 'از اوقات تنهایی و پرداختن به علایق شخصی نهایت لذت را می‌برم', typeA: 'E', typeB: 'I'),
+    MbtiQuestion(title: 'بخش اول: برون‌گرایی (E) یا درون‌گرایی (I) - سوال ۶', optA: 'حضور در کانون توجه جمع‌ها و فعالیت‌های گروهی را دوست دارم', optB: 'کار و فعالیت پشت صحنه یا در آرامش را ترجیح می‌دهم', typeA: 'E', typeB: 'I'),
+    MbtiQuestion(title: 'بخش اول: برون‌گرایی (E) یا درون‌گرایی (I) - سوال ۷', optA: 'مکالمه تلفنی یا حضوری را برای رساندن منظورم ترجیح می‌دهم', optB: 'ارسال پیام متنی یا ایمیل را راحت‌تر و دقیق‌تر می‌دانم', typeA: 'E', typeB: 'I'),
+    MbtiQuestion(title: 'بخش اول: برون‌گرایی (E) یا درون‌گرایی (I) - سوال ۸', optA: 'همگام با صحبت کردن، نظراتم شکل می‌گیرند و پخته می‌شوند', optB: 'ابتدا تمام ابعاد موضوع را در ذهن جمع‌بندی کرده و سپس می‌گویم', typeA: 'E', typeB: 'I'),
 
     // بخش دوم: S یا N
-    MbtiQuestion(title: 'بخش دوم: حسی (S) یا شهودی (N) - سوال ۱', optA: 'به جزئیات و واقعیت‌های ملموس توجه می‌کنم', optB: 'به الگوها و معناهای پنهان توجه می‌کنم', typeA: 'S', typeB: 'N'),
-    MbtiQuestion(title: 'بخش دوم: حسی (S) یا شهودی (N) - سوال ۲', optA: 'ترجیح می‌دهم دستورالعمل گام‌به‌گام داشته باشم', optB: 'ترجیح می‌دهم کلیت کار را بفهمم و خودم جزئیات را پر کنم', typeA: 'S', typeB: 'N'),
-    MbtiQuestion(title: 'بخش دوم: حسی (S) یا شهودی (N) - سوال ۳', optA: 'به تجربه‌ی عملی بیشتر از نظریه اعتماد دارم', optB: 'ایده‌های جدید و نظریه‌ها برایم جذاب‌اند', typeA: 'S', typeB: 'N'),
-    MbtiQuestion(title: 'بخش دوم: حسی (S) یا شهودی (N) - سوال ۴', optA: '«واقع‌بین» بودن برایم مهم است', optB: '«خلاق» بودن برایم مهم است', typeA: 'S', typeB: 'N'),
-    MbtiQuestion(title: 'بخش دوم: حسی (S) یا شهودی (N) - سوال ۵', optA: 'از روش‌های آزموده‌شده استفاده می‌کنم', optB: 'دنبال راه‌های جدید می‌گردم', typeA: 'S', typeB: 'N'),
-    MbtiQuestion(title: 'بخش دوم: حسی (S) یا شهودی (N) - سوال ۶', optA: 'حال حاضر برایم مهم‌تر از آینده است', optB: 'آینده و امکانات برایم جذاب‌تر از حال است', typeA: 'S', typeB: 'N'),
-    MbtiQuestion(title: 'بخش دوم: حسی (S) یا شهودی (N) - سوال ۷', optA: 'وقتی چیزی می‌خوانم، به کلمات دقیق توجه می‌کنم', optB: 'وقتی چیزی می‌خوانم، دنبال معنای کلی می‌گردم', typeA: 'S', typeB: 'N'),
-    MbtiQuestion(title: 'بخش دوم: حسی (S) یا شهودی (N) - سوال ۸', optA: 'از کارهای دقیق و تکراری خسته نمی‌شوم', optB: 'کارهای تکراری زود خسته‌ام می‌کنند', typeA: 'S', typeB: 'N'),
+    MbtiQuestion(title: 'بخش دوم: حسی (S) یا شهودی (N) - سوال ۱', optA: 'بر حقایق عینی، شواهد موجود و جزئیات ملموس تمرکز دارم', optB: 'به معانی عمیق، الگوهای پنهان و افق‌های آینده توجه می‌کنم', typeA: 'S', typeB: 'N'),
+    MbtiQuestion(title: 'بخش دوم: حسی (S) یا شهودی (N) - سوال ۲', optA: 'ترجیح می‌دهم با مراحل منظم، روشن و گام‌به‌گام پیش بروم', optB: 'طرح کلی و انگیزه اصلی را بدانم، جزئیات مسیر را خودم خلق می‌کنم', typeA: 'S', typeB: 'N'),
+    MbtiQuestion(title: 'بخش دوم: حسی (S) یا شهودی (N) - سوال ۳', optA: 'تجارب عملی و آزمون‌شده را مطمئن‌ترین راهنما می‌دانم', optB: 'ایده‌های نوآورانه، نظریه‌ها و روش‌های تازه برایم جذاب‌ترند', typeA: 'S', typeB: 'N'),
+    MbtiQuestion(title: 'بخش دوم: حسی (S) یا شهودی (N) - سوال ۴', optA: 'توصیف «فردی واقع‌بین و اهل عمل» بهتر با من همخوانی دارد', optB: 'توصیف «انسانی خلاق و با تخیل قوی» به حقیقت من نزدیک‌تر است', typeA: 'S', typeB: 'N'),
+    MbtiQuestion(title: 'بخش دوم: حسی (S) یا شهودی (N) - سوال ۵', optA: 'استفاده از شیوه‌های تثبیت‌شده و سنتی به من آرامش می‌دهد', optB: 'کشف راه‌های نرفته و خلاقیت در انجام کارها را می‌پسندم', typeA: 'S', typeB: 'N'),
+    MbtiQuestion(title: 'بخش دوم: حسی (S) یا شهودی (N) - سوال ۶', optA: 'مدیریت و بهره‌وری از زمان حال برایم اولویت اصلی است', optB: 'تصور آینده، احتمالات و ظرفیت‌های پیش‌رو ذهنم را پر می‌کند', typeA: 'S', typeB: 'N'),
+    MbtiQuestion(title: 'بخش دوم: حسی (S) یا شهودی (N) - سوال ۷', optA: 'در مطالعه، دقت به تعابیر دقیق و الفاظ متن برایم کلیدی است', optB: 'در مطالعه، کلیت پیام و لب کلام و الهامات متن را دریافت می‌کنم', typeA: 'S', typeB: 'N'),
+    MbtiQuestion(title: 'بخش دوم: حسی (S) یا شهودی (N) - سوال ۸', optA: 'انجام کارهای دقیق، استاندارد و قاعده‌مند برایم رضایت‌بخش است', optB: 'انجام فرآیندهای روزمره و تکراری سریعاً نشاطم را کم می‌کند', typeA: 'S', typeB: 'N'),
 
     // بخش سوم: T یا F
-    MbtiQuestion(title: 'بخش سوم: تفکری (T) یا احساسی (F) - سوال ۱', optA: 'در تصمیم‌گیری، منطق و داده برایم اولویت دارد', optB: 'در تصمیم‌گیری، احساسات و ارزش‌ها برایم اولویت دارد', typeA: 'T', typeB: 'F'),
-    MbtiQuestion(title: 'بخش سوم: تفکری (T) یا احساسی (F) - سوال ۲', optA: 'انتقاد صادقانه را به تعریف مؤدبانه ترجیح می‌دهم', optB: 'انتقاد، حتی اگر درست باشد، اگر بی‌ملاحظه باشد آزارم می‌دهد', typeA: 'T', typeB: 'F'),
-    MbtiQuestion(title: 'بخش سوم: تفکری (T) یا احساسی (F) - سوال ۳', optA: 'در تعارض، دنبال راه‌حل منطقی می‌گردم', optB: 'در تعارض، اول می‌خواهم احساسم شنیده شود', typeA: 'T', typeB: 'F'),
-    MbtiQuestion(title: 'بخش سوم: تفکری (T) یا احساسی (F) - سوال ۴', optA: '«عادلانه» بودن برایم مهم‌تر از «مهربانانه» بودن است', optB: '«مهربانانه» بودن برایم مهم‌تر از «عادلانه» بودن است', typeA: 'T', typeB: 'F'),
-    MbtiQuestion(title: 'بخش سوم: تفکری (T) یا احساسی (F) - سوال ۵', optA: 'می‌توانم تصمیم سختی بگیرم بدون اینکه احساساتم مانع شود', optB: 'تصمیم‌های سخت که به کسی آسیب می‌زند برایم دشوار است', typeA: 'T', typeB: 'F'),
-    MbtiQuestion(title: 'بخش سوم: تفکری (T) یا احساسی (F) - سوال ۶', optA: 'وقتی کسی مشکل دارد، اول راه‌حل پیشنهاد می‌دهم', optB: 'وقتی کسی مشکل دارد، اول گوش می‌دهم و همدلی می‌کنم', typeA: 'T', typeB: 'F'),
-    MbtiQuestion(title: 'بخش سوم: تفکری (T) یا احساسی (F) - سوال ۷', optA: 'از بحث‌های منطقی لذت می‌برم', optB: 'از بحث‌های پرتنش ناراحت می‌شوم', typeA: 'T', typeB: 'F'),
-    MbtiQuestion(title: 'بخش سوم: تفکری (T) یا احساسی (F) - سوال ۸', optA: '«درست» بودن برایم مهم‌تر از «محبوب» بودن است', optB: 'هماهنگی در گروه برایم مهم است', typeA: 'T', typeB: 'F'),
+    MbtiQuestion(title: 'بخش سوم: تفکری (T) یا احساسی (F) - سوال ۱', optA: 'هنگام قضاوت، تحلیل عقلانی، منطق و داده‌ها برایم مقدم است', optB: 'هنگام قضاوت، ارزش‌های انسانی، اخلاقی و حالِ افراد برایم مقدم است', typeA: 'T', typeB: 'F'),
+    MbtiQuestion(title: 'بخش سوم: تفکری (T) یا احساسی (F) - سوال ۲', optA: 'نقد صریح و واقع‌بینانه را بر تعارفات خوشایند ترجیح می‌دهم', optB: 'نحوه بیان و احترام به عواطف طرف مقابل برایم اصل بنیادین است', typeA: 'T', typeB: 'F'),
+    MbtiQuestion(title: 'بخش سوم: تفکری (T) یا احساسی (F) - سوال ۳', optA: 'در مواجهه با اختلاف‌ها، یافتن ریشه منطقی و راه‌حل را پی می‌گیرم', optB: 'در مواجهه با اختلاف‌ها، التیام احساسات و درک طرفین را اصل می‌دانم', typeA: 'T', typeB: 'F'),
+    MbtiQuestion(title: 'بخش سوم: تفکری (T) یا احساسی (F) - سوال ۴', optA: 'تحقق «عدالت محض و شایستگی» را بالاتر از ترحم می‌دانم', optB: 'تجلی «رحمت، گذشت و احسان» را والاتر از حسابگری دقیق می‌دانم', typeA: 'T', typeB: 'F'),
+    MbtiQuestion(title: 'بخش سوم: تفکری (T) یا احساسی (F) - سوال ۵', optA: 'در موقعیت‌های حساس، می‌توانم بی‌طرفانه و بدون تعصب تصمیم بگیرم', optB: 'اثر تصمیمات بر دل و عاطفه انسان‌ها همیشه در کانون توجهم است', typeA: 'T', typeB: 'F'),
+    MbtiQuestion(title: 'بخش سوم: تفکری (T) یا احساسی (F) - سوال ۶', optA: 'هنگام شنیدن گرفتاری دوست، ذهنم فوراً راه‌حل‌های عملی می‌چیند', optB: 'هنگام شنیدن گرفتاری دوست، تمام وجودم همدلی و آرامش دادن می‌شود', typeA: 'T', typeB: 'F'),
+    MbtiQuestion(title: 'بخش سوم: تفکری (T) یا احساسی (F) - سوال ۷', optA: 'رعایت بی‌چون‌وچرای اصول و مقررات ضامن نظم واقعی است', optB: 'ملاحظه شرایط خاص انسانی اولویت دارد بر اجرای خشک قوانین', typeA: 'T', typeB: 'F'),
+    MbtiQuestion(title: 'بخش سوم: تفکری (T) یا احساسی (F) - سوال ۸', optA: 'استدلال‌های منطقی، منسجم و بی‌نقص مرا اقناع می‌کنند', optB: 'شور، اخلاص و اصالت درونی گوینده بیش از هر چیز بر من اثر دارد', typeA: 'T', typeB: 'F'),
 
     // بخش چهارم: J یا P
-    MbtiQuestion(title: 'بخش چهارم: قضاوتی (J) یا ادراکی (P) - سوال ۱', optA: 'برنامه‌ریزی قبلی به من آرامش می‌دهد', optB: 'برنامه‌ریزی سفت‌وسخت احساس محدودیت می‌دهد', typeA: 'J', typeB: 'P'),
-    MbtiQuestion(title: 'بخش چهارم: قضاوتی (J) یا ادراکی (P) - سوال ۲', optA: 'کارها را زودتر از موعد تمام می‌کنم', optB: 'اغلب در آخرین لحظه کارها را تمام می‌کنم', typeA: 'J', typeB: 'P'),
-    MbtiQuestion(title: 'بخش چهارم: قضاوتی (J) یا ادراکی (P) - سوال ۳', optA: 'تغییر برنامه در لحظه آخر آزارم می‌دهد', optB: 'تغییر برنامه در لحظه آخر هیجان‌انگیز است', typeA: 'J', typeB: 'P'),
-    MbtiQuestion(title: 'بخش چهارم: قضاوتی (J) یا ادراکی (P) - سوال ۴', optA: 'دوست دارم تصمیم‌ها گرفته شوند و کار تمام شود', optB: 'دوست دارم گزینه‌ها باز بمانند', typeA: 'J', typeB: 'P'),
-    MbtiQuestion(title: 'بخش چهارم: قضاوتی (J) یا ادراکی (P) - سوال ۵', optA: 'فهرست کارها و برنامه روزانه دارم', optB: 'فهرست کارها برایم محدودکننده است', typeA: 'J', typeB: 'P'),
-    MbtiQuestion(title: 'بخش چهارم: قضاوتی (J) یا ادراکی (P) - سوال ۶', optA: 'محیط نامرتب حواسم را پرت می‌کند', optB: 'می‌توانم در محیط نامرتب هم کار کنم', typeA: 'J', typeB: 'P'),
-    MbtiQuestion(title: 'بخش چهارم: قضاوتی (J) یا ادراکی (P) - سوال ۷', optA: 'ترجیح می‌دهم همه چیز مشخص و قطعی باشد', optB: 'با ابهام و عدم قطعیت راحتم', typeA: 'J', typeB: 'P'),
-    MbtiQuestion(title: 'بخش چهارم: قضاوتی (J) یا ادراکی (P) - سوال ۸', optA: 'وقتی کاری نیمه‌تمام است، ذهنم درگیر است', optB: 'می‌توانم چند کار نیمه‌تمام داشته باشم بدون استرس', typeA: 'J', typeB: 'P'),
+    MbtiQuestion(title: 'بخش چهارم: قضاوتی (J) یا ادراکی (P) - سوال ۱', optA: 'کارها را بر اساس برنامه‌ریزی قبلی و نظم زمانی انجام می‌دهم', optB: 'انعطاف‌پذیری و عمل در جریان موقعیت‌ها را ترجیح می‌دهم', typeA: 'J', typeB: 'P'),
+    MbtiQuestion(title: 'بخش چهارم: قضاوتی (J) یا ادراکی (P) - سوال ۲', optA: 'تکالیف را پیش از مهلت نهایی تمام می‌کنم تا خاطرم آسوده شود', optB: 'بهترین تمرکز و کارایی‌ام در ساعات پایانی و با نزدیک شدن به مهلت است', typeA: 'J', typeB: 'P'),
+    MbtiQuestion(title: 'بخش چهارم: قضاوتی (J) یا ادراکی (P) - سوال ۳', optA: 'تغییر ناگهانی و برنامه‌ریزی‌نشده در تصمیمات برایم ناخوشایند است', optB: 'پیشامدهای غیرمنتظره و رویدادهای خودجوش برایم هیجان‌انگیز است', typeA: 'J', typeB: 'P'),
+    MbtiQuestion(title: 'بخش چهارم: قضاوتی (J) یا ادراکی (P) - سوال ۴', optA: 'تمایل دارم پرونده مسائل زودتر مشخص و قطعی بسته شود', optB: 'تمایل دارم تصمیم نهایی را باز بگذارم تا شواهد بیشتری برسم', typeA: 'J', typeB: 'P'),
+    MbtiQuestion(title: 'بخش چهارم: قضاوتی (J) یا ادراکی (P) - سوال ۵', optA: 'لیست کارهای روزمره (To-Do List) و چک‌لیست معین دارم', optB: 'وجود چک‌لیست‌های انعطاف‌ناپذیر حس محدودیت به من می‌دهد', typeA: 'J', typeB: 'P'),
+    MbtiQuestion(title: 'بخش چهارم: قضاوتی (J) یا ادراکی (P) - سوال ۶', optA: 'نظم و آراستگی محیط کار، تمرکز و آرامشم را دوچندان می‌کند', optB: 'در محیط‌های شلوغ یا متغیر نیز به خوبی تمرکزم را حفظ می‌کنم', typeA: 'J', typeB: 'P'),
+    MbtiQuestion(title: 'بخش چهارم: قضاوتی (J) یا ادراکی (P) - سوال ۷', optA: 'قطعیت، روشنی و شفافیت برنامه‌ها برایم مایه دلگرمی است', optB: 'فضای باز، عدم قطعیت و شناور بودن برنامه‌ها را ترجیح می‌دهم', typeA: 'J', typeB: 'P'),
+    MbtiQuestion(title: 'بخش چهارم: قضاوتی (J) یا ادراکی (P) - سوال ۸', optA: 'ناتمام ماندن کارها در ذهنم بار روانی و دغدغه ایجاد می‌کند', optB: 'هم‌زمانی چند کار باز و پروژه‌های موازی برایم بدون استرس است', typeA: 'J', typeB: 'P'),
   ];
 
   static const Map<String, Map<String, String>> personalityDetails = {
@@ -2638,331 +2638,343 @@ class _MbtiQuizScreenState extends State<MbtiQuizScreen> {
     if (_showResult) {
       final details = personalityDetails[_calculatedType] ?? {
         'title': 'تیپ شخصیتی $_calculatedType',
-        'desc': 'توضیحات تکمیلی برای این تیپ ثبت شده است.'
+        'desc': 'توضیحات تکمیلی برای این تیپ شخصیتی.'
       };
 
-      return SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [Color(0xFF1B3B4B), Color(0xFF132A36)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
+      return Container(
+        color: const Color(0xFFFBF8F5),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(20),
+          physics: const BouncingScrollPhysics(),
+          child: Column(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(24),
+                  border: Border.all(color: const Color(0xFFFF6F43).withOpacity(0.35), width: 1.5),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFFFF6F43).withOpacity(0.12),
+                      blurRadius: 20,
+                      offset: const Offset(0, 8),
+                    ),
+                  ],
                 ),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: const Color(0xFFFF6B4A).withOpacity(0.8), width: 1.5),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.3),
-                    blurRadius: 15,
-                    offset: const Offset(0, 6),
-                  ),
-                ],
-              ),
-              child: Column(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFFF6B4A).withOpacity(0.15),
-                      shape: BoxShape.circle,
+                child: Column(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFFF2EC),
+                        shape: BoxShape.circle,
+                        border: Border.all(color: const Color(0xFFFF6F43).withOpacity(0.3), width: 1.5),
+                      ),
+                      child: const Icon(Icons.auto_awesome, color: Color(0xFFFF6F43), size: 48),
                     ),
-                    child: const Icon(Icons.stars_rounded, color: Color(0xFFFF6B4A), size, fontSize: 14),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    _calculatedType,
-                    style: const TextStyle(
-                      color: Color(0xFFFF6B4A),
-                      fontSize: 36, fontSize: 14),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    _calculatedType,
-                    style: const TextStyle(
-                      color: Color(0xFFFF6B4A),
-                      fontSize: 36,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 3,
+                    const SizedBox(height: 14),
+                    const Text(
+                      'نتیجه ارزیابی شخصیت شما',
+                      style: TextStyle(color: Color(0xFF8A6E68), fontSize: 13.5, fontWeight: FontWeight.w600),
                     ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    details['title']!,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 17,
-                      fontWeight: FontWeight.bold,
+                    const SizedBox(height: 4),
+                    Text(
+                      _calculatedType,
+                      style: const TextStyle(
+                        color: Color(0xFFFF6F43),
+                        fontSize: 38,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 4,
+                      ),
                     ),
-                    textAlign: TextAlign.center,
-                  ),
-                  Divider(color: Colors.white.withOpacity(0.15), height: 32),
-                  Text(
-                    details['desc']!,
-                    style: const TextStyle(
-                      color: Colors.white70,
-                      fontSize: 14.5,
-                      height: 1.85,
+                    const SizedBox(height: 6),
+                    Text(
+                      details['title']!,
+                      style: const TextStyle(
+                        color: Color(0xFF2D1F1D),
+                        fontSize: 17,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      textAlign: TextAlign.center,
                     ),
-                    textAlign: TextAlign.justify,
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 24),
-            SizedBox(
-              width: double.infinity,
-              height: 50,
-              child: ElevatedButton.icon(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFFF6B4A),
-                  elevation: 4,
-                  shadowColor: const Color(0xFFFF6B4A).withOpacity(0.4),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                ),
-                onPressed: _resetQuiz,
-                icon: const Icon(Icons.refresh_rounded, color: Colors.white),
-                label: const Text(
-                  'آزمون مجدد',
-                  style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold),
+                    Divider(color: const Color(0xFFFFE3D7), height: 32, thickness: 1.2),
+                    Text(
+                      details['desc']!,
+                      style: const TextStyle(
+                        color: Color(0xFF4E3D3B),
+                        fontSize: 14.5,
+                        height: 1.9,
+                      ),
+                      textAlign: TextAlign.justify,
+                    ),
+                  ],
                 ),
               ),
-            ),
-          ],
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                height: 52,
+                child: ElevatedButton.icon(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFFF6F43),
+                    elevation: 3,
+                    shadowColor: const Color(0xFFFF6F43).withOpacity(0.4),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  ),
+                  onPressed: _resetQuiz,
+                  icon: const Icon(Icons.refresh_rounded, color: Colors.white, size: 22),
+                  label: const Text(
+                    'آزمون مجدد',
+                    style: TextStyle(color: Colors.white, fontSize: 15.5, fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       );
     }
 
-    final int answeredCount = _answers.length;
-    final double progress = answeredCount / questions.length;
+    final answeredCount = _answers.length;
+    final progress = answeredCount / 32;
 
-    return Column(
-      children: [
-        Container(
-          padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
-          decoration: BoxDecoration(
-            color: const Color(0xFF0F2633),
-            border: Border(bottom: BorderSide(color: Colors.white.withOpacity(0.08))),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text(
-                    'آزمون خودارزیابی MBTI (نسخه فارسی)',
-                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
-                  ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFFF6B4A).withOpacity(0.15),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Text(
-                      '$answeredCount از ۳۲ پاسخ داده شده',
-                      style: const TextStyle(color: Color(0xFFFF6B4A), fontSize: 12, fontWeight: FontWeight.bold),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 10),
-              ClipRRect(
-                borderRadius: BorderRadius.circular(6),
-                child: LinearProgressIndicator(
-                  value: progress,
-                  minHeight: 7,
-                  backgroundColor: Colors.white12,
-                  valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFFFF6B4A)),
+    return Container(
+      color: const Color(0xFFFBF8F5),
+      child: Column(
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.04),
+                  blurRadius: 8,
+                  offset: const Offset(0, 3),
                 ),
-              ),
-            ],
-          ),
-        ),
-        Expanded(
-          child: ListView.builder(
-            physics: const BouncingScrollPhysics(),
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-            itemCount: questions.length,
-            itemBuilder: (context, index) {
-              final q = questions[index];
-              final currentAns = _answers[index];
-              final isAnswered = currentAns != null;
-
-              return Container(
-                margin: const EdgeInsets.only(bottom: 12),
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFF183848), Color(0xFF112834)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(
-                    color: isAnswered ? const Color(0xFFFF6B4A).withOpacity(0.6) : Colors.white.withOpacity(0.07),
-                    width: 1.2,
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.2),
-                      blurRadius: 6,
-                      offset: const Offset(0, 3),
+              ],
+            ),
+            child: Column(
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Row(
+                      children: [
+                        Icon(Icons.psychology_alt_rounded, color: Color(0xFFFF6F43), size: 22),
+                        SizedBox(width: 8),
+                        Text(
+                          'تست شخصیت‌شناسی MBTI',
+                          style: TextStyle(color: Color(0xFF2D1F1D), fontSize: 14.5, fontWeight: FontWeight.bold),
+                        ),
+                      ],
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFFF2EC),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: const Color(0xFFFF6F43).withOpacity(0.2)),
+                      ),
+                      child: Text(
+                        '$answeredCount از ۳۲ پاسخ داده شده',
+                        style: const TextStyle(color: Color(0xFFFF6F43), fontSize: 12, fontWeight: FontWeight.bold),
+                      ),
                     ),
                   ],
                 ),
-                child: Padding(
-                  padding: const EdgeInsets.all(14),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        q.title,
-                        style: TextStyle(
-                          color: isAnswered ? Colors.white : Colors.white.withOpacity(0.85),
-                          fontSize: 13,
-                          fontWeight: FontWeight.bold,
-                          height: 1.3,
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      InkWell(
-                        onTap: () {
-                          setState(() {
-                            _answers[index] = q.typeA;
-                          });
-                        },
-                        borderRadius: BorderRadius.circular(10),
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 200),
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
-                          decoration: BoxDecoration(
-                            color: currentAns == q.typeA
-                                ? const Color(0xFFFF6B4A).withOpacity(0.18)
-                                : Colors.black.withOpacity(0.15),
-                            borderRadius: BorderRadius.circular(10),
-                            border: Border.all(
-                              color: currentAns == q.typeA
-                                  ? const Color(0xFFFF6B4A)
-                                  : Colors.white.withOpacity(0.1),
-                              width: 1.1,
-                            ),
-                          ),
-                          child: Row(
-                            children: [
-                              Icon(
-                                currentAns == q.typeA ? Icons.radio_button_checked : Icons.radio_button_off,
-                                color: currentAns == q.typeA ? const Color(0xFFFF6B4A) : Colors.white38,
-                                size: 19,
-                              ),
-                              const SizedBox(width: 10),
-                              Expanded(
-                                child: Text(
-                                  q.optA,
-                                  style: TextStyle(
-                                    color: currentAns == q.typeA ? Colors.white : Colors.white70,
-                                    fontSize: 13.5,
-                                    fontWeight: currentAns == q.typeA ? FontWeight.w600 : FontWeight.normal,
-                                    height: 1.3,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      InkWell(
-                        onTap: () {
-                          setState(() {
-                            _answers[index] = q.typeB;
-                          });
-                        },
-                        borderRadius: BorderRadius.circular(10),
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 200),
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
-                          decoration: BoxDecoration(
-                            color: currentAns == q.typeB
-                                ? const Color(0xFFFF6B4A).withOpacity(0.18)
-                                : Colors.black.withOpacity(0.15),
-                            borderRadius: BorderRadius.circular(10),
-                            border: Border.all(
-                              color: currentAns == q.typeB
-                                  ? const Color(0xFFFF6B4A)
-                                  : Colors.white.withOpacity(0.1),
-                              width: 1.1,
-                            ),
-                          ),
-                          child: Row(
-                            children: [
-                              Icon(
-                                currentAns == q.typeB ? Icons.radio_button_checked : Icons.radio_button_off,
-                                color: currentAns == q.typeB ? const Color(0xFFFF6B4A) : Colors.white38,
-                                size: 19,
-                              ),
-                              const SizedBox(width: 10),
-                              Expanded(
-                                child: Text(
-                                  q.optB,
-                                  style: TextStyle(
-                                    color: currentAns == q.typeB ? Colors.white : Colors.white70,
-                                    fontSize: 13.5,
-                                    fontWeight: currentAns == q.typeB ? FontWeight.w600 : FontWeight.normal,
-                                    height: 1.3,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
+                const SizedBox(height: 10),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(6),
+                  child: LinearProgressIndicator(
+                    value: progress,
+                    minHeight: 7,
+                    backgroundColor: const Color(0xFFFFEDE4),
+                    valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFFFF6F43)),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Expanded(
+            child: ListView.builder(
+              physics: const BouncingScrollPhysics(),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+              itemCount: questions.length,
+              itemBuilder: (context, index) {
+                final q = questions[index];
+                final currentAns = _answers[index];
+                final isAnswered = currentAns != null;
+
+                return Container(
+                  margin: const EdgeInsets.only(bottom: 12),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: isAnswered ? const Color(0xFFFF6F43).withOpacity(0.6) : const Color(0xFFEFE8E3),
+                      width: 1.2,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: isAnswered
+                            ? const Color(0xFFFF6F43).withOpacity(0.06)
+                            : Colors.black.withOpacity(0.025),
+                        blurRadius: 8,
+                        offset: const Offset(0, 3),
                       ),
                     ],
                   ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(15),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          q.title,
+                          style: TextStyle(
+                            color: isAnswered ? const Color(0xFFFF6F43) : const Color(0xFF2D1F1D),
+                            fontSize: 13.5,
+                            fontWeight: FontWeight.bold,
+                            height: 1.3,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        InkWell(
+                          onTap: () {
+                            setState(() {
+                              _answers[index] = q.typeA;
+                            });
+                          },
+                          borderRadius: BorderRadius.circular(12),
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 200),
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                            decoration: BoxDecoration(
+                              color: currentAns == q.typeA
+                                  ? const Color(0xFFFFF2EC)
+                                  : const Color(0xFFF9F7F5),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: currentAns == q.typeA
+                                    ? const Color(0xFFFF6F43)
+                                    : const Color(0xFFEAE3DE),
+                                width: 1.2,
+                              ),
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(
+                                  currentAns == q.typeA ? Icons.radio_button_checked : Icons.radio_button_off,
+                                  color: currentAns == q.typeA ? const Color(0xFFFF6F43) : const Color(0xFFB5A6A1),
+                                  size: 20,
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Text(
+                                    q.optA,
+                                    style: TextStyle(
+                                      color: currentAns == q.typeA ? const Color(0xFF2D1F1D) : const Color(0xFF5E4E4B),
+                                      fontSize: 13.5,
+                                      fontWeight: currentAns == q.typeA ? FontWeight.bold : FontWeight.normal,
+                                      height: 1.35,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        InkWell(
+                          onTap: () {
+                            setState(() {
+                              _answers[index] = q.typeB;
+                            });
+                          },
+                          borderRadius: BorderRadius.circular(12),
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 200),
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                            decoration: BoxDecoration(
+                              color: currentAns == q.typeB
+                                  ? const Color(0xFFFFF2EC)
+                                  : const Color(0xFFF9F7F5),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: currentAns == q.typeB
+                                    ? const Color(0xFFFF6F43)
+                                    : const Color(0xFFEAE3DE),
+                                width: 1.2,
+                              ),
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(
+                                  currentAns == q.typeB ? Icons.radio_button_checked : Icons.radio_button_off,
+                                  color: currentAns == q.typeB ? const Color(0xFFFF6F43) : const Color(0xFFB5A6A1),
+                                  size: 20,
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Text(
+                                    q.optB,
+                                    style: TextStyle(
+                                      color: currentAns == q.typeB ? const Color(0xFF2D1F1D) : const Color(0xFF5E4E4B),
+                                      fontSize: 13.5,
+                                      fontWeight: currentAns == q.typeB ? FontWeight.bold : FontWeight.normal,
+                                      height: 1.35,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+          Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.06),
+                  blurRadius: 10,
+                  offset: const Offset(0, -3),
                 ),
-              );
-            },
-          ),
-        ),
-        Container(
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            color: const Color(0xFF0F2633),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.25),
-                blurRadius: 10,
-                offset: const Offset(0, -3),
-              ),
-            ],
-          ),
-          child: SizedBox(
-            width: double.infinity,
-            height: 48,
-            child: ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: answeredCount == 32 ? const Color(0xFFFF6B4A) : Colors.white.withOpacity(0.12),
-                elevation: answeredCount == 32 ? 4 : 0,
-                shadowColor: const Color(0xFFFF6B4A).withOpacity(0.4),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              ),
-              onPressed: answeredCount == 32 ? _calculateResult : null,
-              child: Text(
-                answeredCount == 32 ? 'مشاهده نتیجه تیپ شخصیتی' : 'پاسخ به همه سوالات (${32 - answeredCount} مانده)',
-                style: TextStyle(
-                  color: answeredCount == 32 ? Colors.white : Colors.white38,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 14.5,
+              ],
+            ),
+            child: SizedBox(
+              width: double.infinity,
+              height: 50,
+              child: ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: answeredCount == 32 ? const Color(0xFFFF6F43) : const Color(0xFFEAE3DE),
+                  elevation: answeredCount == 32 ? 3 : 0,
+                  shadowColor: const Color(0xFFFF6F43).withOpacity(0.4),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                ),
+                onPressed: answeredCount == 32 ? _calculateResult : null,
+                child: Text(
+                  answeredCount == 32 ? 'مشاهده نتیجه تیپ شخصیتی' : 'پاسخ به همه سوالات (${32 - answeredCount} مانده)',
+                  style: TextStyle(
+                    color: answeredCount == 32 ? Colors.white : const Color(0xFF9E8E89),
+                    fontWeight: FontWeight.bold,
+                    fontSize: 15,
+                  ),
                 ),
               ),
             ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }
