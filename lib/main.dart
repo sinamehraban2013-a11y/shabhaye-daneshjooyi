@@ -794,13 +794,14 @@ Future<void> _downloadAndOpen(
     }
 
     if (shouldDownload) {
-      final downloadUrl =
-          'https://drive.google.com/uc?export=download&id=${item.id}';
+      final downloadUri = Uri.parse(
+        'https://docs.google.com/uc?export=download&id=${item.id}&confirm=t',
+      );
 
       final response = await http
-          .get(Uri.parse(downloadUrl))
+          .get(downloadUri)
           .timeout(
-            const Duration(seconds: 60),
+            const Duration(seconds: 90),
           );
 
       if (response.statusCode != 200) {
@@ -2001,28 +2002,18 @@ class _AudioPlayerScreenState extends State<AudioPlayerScreen> {
   Duration _duration = Duration.zero;
   Duration _position = Duration.zero;
   bool _isPlaying = false;
+  double _playbackRate = 1.0;
 
-@override
-void initState() {
-  super.initState();
-  _player = AudioPlayer();
-  _initAudio();
-}
+  // لیست سرعت‌های استاندارد و کاربردی
+  final List<double> _speeds = [0.75, 1.0, 1.25, 1.5, 1.75, 2.0];
 
-  Future<void> _initAudio() async {
-    // تنظیمات فعال‌سازی پخش در پس‌زمینه اندروید
-    await AudioPlayer.global.setAudioContext(
-      AudioContext(
-        android: const AudioContextAndroid(
-          isSpeakerphoneOn: false,
-          stayAwake: true,
-          contentType: AndroidContentType.music,
-          usageType: AndroidUsageType.media,
-          audioFocus: AndroidAudioFocus.gain,
-        ),
-      ),
-    );
+  @override
+  void initState() {
+    super.initState();
+    // ۱. مقداردهی قطعی پلیر
+    _player = AudioPlayer();
 
+    // ۲. لیسنرها
     _player.onDurationChanged.listen((d) {
       if (mounted) setState(() => _duration = d);
     });
@@ -2033,7 +2024,48 @@ void initState() {
       if (mounted) setState(() => _isPlaying = s == PlayerState.playing);
     });
 
-    await _player.play(DeviceFileSource(widget.filePath));
+    // ۳. شروع با تنظیمات پس‌زمینه
+    _initAudio();
+  }
+
+  Future<void> _initAudio() async {
+    try {
+      await _player.setAudioContext(
+        AudioContext(
+          android: const AudioContextAndroid(
+            isSpeakerphoneOn: false,
+            stayAwake: true,
+            contentType: AndroidContentType.music,
+            usageType: AndroidUsageType.media,
+            audioFocus: AndroidAudioFocus.gain,
+          ),
+        ),
+      );
+
+      await _player.setSource(DeviceFileSource(widget.filePath));
+      await _player.setPlaybackRate(_playbackRate);
+      await _player.resume();
+    } catch (e) {
+      debugPrint("Audio Init/Playback Error: $e");
+    }
+  }
+
+  // متد تغییر سرعت پخش
+  Future<void> _changeSpeed(double speed) async {
+    await _player.setPlaybackRate(speed);
+    if (mounted) {
+      setState(() {
+        _playbackRate = speed;
+      });
+    }
+  }
+
+  // تغییر چرخشی سرعت با هر بار لمس دکمه
+  void _toggleNextSpeed() {
+    int currentIndex = _speeds.indexOf(_playbackRate);
+    if (currentIndex == -1) currentIndex = 1; // پیش‌فرض 1.0x
+    int nextIndex = (currentIndex + 1) % _speeds.length;
+    _changeSpeed(_speeds[nextIndex]);
   }
 
   @override
@@ -2044,82 +2076,118 @@ void initState() {
   }
 
   String _formatDuration(Duration d) {
-    String twoDigits(int n) => n.toString().padLeft(2, '0');
-    final minutes = twoDigits(d.inMinutes.remainder(60));
-    final seconds = twoDigits(d.inSeconds.remainder(60));
-    return d.inHours > 0 ? '${twoDigits(d.inHours)}:$minutes:$seconds' : '$minutes:$seconds';
+    final m = d.inMinutes.remainder(60).toString().padLeft(2, '0');
+    final s = d.inSeconds.remainder(60).toString().padLeft(2, '0');
+    final h = d.inHours > 0 ? '${d.inHours}:' : '';
+    return '$h$m:$s';
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('پخش سخنرانی')),
-      body: Padding(
-        padding: const EdgeInsets.all(24.0),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              width: 170,
-              height: 170,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: const RadialGradient(colors: [Color(0xFFFF6B4A), Color(0xFF27293D)]),
-                boxShadow: [
-                  BoxShadow(color: const Color(0xFFFF6B4A).withOpacity(0.3), blurRadius: 20, spreadRadius: 5),
-                ],
+      appBar: AppBar(
+        title: const Text(
+          'پخش سخنرانی',
+          style: TextStyle(fontFamily: 'Vazirmatn', fontWeight: FontWeight.bold),
+        ),
+        centerTitle: true,
+      ),
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.headphones, size: 100, color: Color(0xFF1B4332)),
+              const SizedBox(height: 24),
+              Text(
+                widget.title,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontFamily: 'Vazirmatn',
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
-              child: const Icon(Icons.headphones, size: 75, color: Colors.white),
-            ),
-            const SizedBox(height: 30),
-            Text(
-              widget.title,
-              textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 30),
-            Slider(
-              min: 0,
-              max: _duration.inSeconds.toDouble() > 0 ? _duration.inSeconds.toDouble() : 1.0,
-              value: _position.inSeconds.toDouble().clamp(0.0, _duration.inSeconds.toDouble() > 0 ? _duration.inSeconds.toDouble() : 1.0),
-              activeColor: const Color(0xFFFF6B4A),
-              onChanged: (val) => _player.seek(Duration(seconds: val.toInt())),
-            ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              const SizedBox(height: 32),
+              Slider(
+                value: _position.inSeconds.clamp(0, _duration.inSeconds).toDouble(),
+                max: _duration.inSeconds > 0 ? _duration.inSeconds.toDouble() : 1.0,
+                activeColor: const Color(0xFF1B4332),
+                onChanged: (value) async {
+                  await _player.seek(Duration(seconds: value.toInt()));
+                },
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(_formatDuration(_position)),
+                    Text(_formatDuration(_duration)),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 28),
+              
+              // ردیف دکمه‌های کنترلی + دکمه سرعت پخش
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Text(_formatDuration(_position), style: const TextStyle(fontSize: 12, color: Colors.white70)),
-                  Text(_formatDuration(_duration), style: const TextStyle(fontSize: 12, color: Colors.white70)),
+                  // دکمه سرعت (با زدن روش سرعت بین 0.75 تا 2x جابه‌جا میشه)
+                  ActionChip(
+                    backgroundColor: const Color(0xFFE8F5E9),
+                    side: const BorderSide(color: Color(0xFF1B4332)),
+                    label: Text(
+                      '${_playbackRate}x',
+                      style: const TextStyle(
+                        fontFamily: 'Vazirmatn',
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF1B4332),
+                      ),
+                    ),
+                    onPressed: _toggleNextSpeed,
+                  ),
+                  const SizedBox(width: 16),
+                  
+                  // عقب بردن ۱۰ ثانیه
+                  IconButton(
+                    iconSize: 36,
+                    icon: const Icon(Icons.replay_10),
+                    onPressed: () {
+                      final newPos = _position - const Duration(seconds: 10);
+                      _player.seek(newPos < Duration.zero ? Duration.zero : newPos);
+                    },
+                  ),
+                  const SizedBox(width: 8),
+
+                  // دکمه پخش / مکث
+                  FloatingActionButton(
+                    backgroundColor: const Color(0xFF1B4332),
+                    child: Icon(_isPlaying ? Icons.pause : Icons.play_arrow, size: 36),
+                    onPressed: () {
+                      if (_isPlaying) {
+                        _player.pause();
+                      } else {
+                        _player.resume();
+                      }
+                    },
+                  ),
+                  const SizedBox(width: 8),
+
+                  // جلو بردن ۱۰ ثانیه
+                  IconButton(
+                    iconSize: 36,
+                    icon: const Icon(Icons.forward_10),
+                    onPressed: () {
+                      final newPos = _position + const Duration(seconds: 10);
+                      _player.seek(newPos > _duration ? _duration : newPos);
+                    },
+                  ),
                 ],
               ),
-            ),
-            const SizedBox(height: 20),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                IconButton(
-                  iconSize: 36,
-                  icon: const Icon(Icons.replay_10),
-                  onPressed: () => _player.seek(_position - const Duration(seconds: 10)),
-                ),
-                const SizedBox(width: 16),
-                IconButton(
-                  iconSize: 64,
-                  color: const Color(0xFFFF6B4A),
-                  icon: Icon(_isPlaying ? Icons.pause_circle_filled : Icons.play_circle_filled),
-                  onPressed: () => _isPlaying ? _player.pause() : _player.resume(),
-                ),
-                const SizedBox(width: 16),
-                IconButton(
-                  iconSize: 36,
-                  icon: const Icon(Icons.forward_10),
-                  onPressed: () => _player.seek(_position + const Duration(seconds: 10)),
-                ),
-              ],
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
