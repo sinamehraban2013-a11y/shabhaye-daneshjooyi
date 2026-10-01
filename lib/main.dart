@@ -801,251 +801,188 @@ String _getLocalFileName(
   return fileName;
 }
 
-Future<void> _downloadAndOpen(
-  DriveItem item, {
-  bool isApk = false,
-  bool isPdf = false,
-}) async {
-  bool downloadDialogIsOpen = true;
+  Future<void> _downloadAndOpen(
+    DriveItem item, {
+    bool isApk = false,
+    bool isPdf = false,
+  }) async {
+    bool downloadDialogIsOpen = true;
 
-  showDialog(
-    context: context,
-    barrierDismissible: false,
-    builder: (ctx) => WillPopScope(
-      onWillPop: () async => false,
-      child: const AlertDialog(
-        backgroundColor: Color(0xFF27293D),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            CircularProgressIndicator(
-              color: Color(0xFFFF6B4A),
-            ),
-            SizedBox(height: 16),
-            Text(
-              'در حال دریافت فایل...\nلطفاً شکیبا باشید',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 13,
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => WillPopScope(
+        onWillPop: () async => false,
+        child: const AlertDialog(
+          backgroundColor: Color(0xFF27293D),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              CircularProgressIndicator(
+                color: Color(0xFFFF6B4A),
               ),
-            ),
-          ],
-        ),
-      ),
-    ),
-  );
-
-  try {
-    final dir = await getTemporaryDirectory();
-
-    final fileName = _getLocalFileName(
-      item,
-      isPdf: isPdf,
-      isApk: isApk,
-    );
-
-    final filePath = '${dir.path}/$fileName';
-    final file = File(filePath);
-
-    bool hasPrefix(
-      List<int> bytes,
-      List<int> prefix,
-    ) {
-      if (bytes.length < prefix.length) {
-        return false;
-      }
-
-      for (int i = 0; i < prefix.length; i++) {
-        if (bytes[i] != prefix[i]) {
-          return false;
-        }
-      }
-
-      return true;
-    }
-
-    bool looksLikeHtml(List<int> bytes) {
-      if (bytes.isEmpty) {
-        return false;
-      }
-
-      final text = utf8
-          .decode(
-            bytes,
-            allowMalformed: true,
-          )
-          .trimLeft()
-          .toLowerCase();
-
-      return text.startsWith('<!doctype html') ||
-          text.startsWith('<html') ||
-          text.contains('<title>google drive') ||
-          text.contains('google drive');
-    }
-
-    Future<List<int>> readFileSample() {
-      return file.openRead(0, 512).fold<List<int>>(
-        <int>[],
-        (buffer, chunk) {
-          buffer.addAll(chunk);
-          return buffer;
-        },
-      );
-    }
-
-    bool shouldDownload = !await file.exists();
-
-    if (!shouldDownload) {
-      final fileLength = await file.length();
-
-      if (fileLength == 0) {
-        shouldDownload = true;
-      } else {
-        // فایل‌های HTML قدیمی که ممکن است قبلاً به‌جای فایل اصلی ذخیره شده باشند
-        final cachedSample = await readFileSample();
-
-        if (looksLikeHtml(cachedSample)) {
-          shouldDownload = true;
-        }
-
-        // بررسی سربرگ PDF
-        if (isPdf &&
-            !hasPrefix(
-              cachedSample,
-              <int>[37, 80, 68, 70], // %PDF
-            )) {
-          shouldDownload = true;
-        }
-
-        // بررسی سربرگ ZIP/APK (هر دو ساختار PK دارند)
-        if (isApk &&
-            !hasPrefix(
-              cachedSample,
-              <int>[80, 75], // PK
-            )) {
-          shouldDownload = true;
-        }
-      }
-    }
-
-    if (shouldDownload) {
-      final downloadUri = Uri.parse(
-        'https://docs.google.com/uc?export=download&id=${item.id}&confirm=t',
-      );
-
-      final response = await http
-          .get(downloadUri)
-          .timeout(
-            const Duration(seconds: 90),
-          );
-
-      if (response.statusCode != 200) {
-        throw Exception(
-          'خطا در دریافت فایل (${response.statusCode})',
-        );
-      }
-
-      final bytes = response.bodyBytes;
-
-      if (bytes.isEmpty) {
-        throw Exception('فایل دریافتی خالی است');
-      }
-
-      final contentType =
-          response.headers['content-type']?.toLowerCase() ?? '';
-
-      if (contentType.contains('text/html') ||
-          looksLikeHtml(bytes)) {
-        throw Exception(
-          'گوگل‌درایو به‌جای فایل، صفحهٔ HTML ارسال کرده است',
-        );
-      }
-
-      if (isPdf &&
-          !hasPrefix(
-            bytes,
-            <int>[37, 80, 68, 70], // %PDF
-          )) {
-        throw Exception('فایل دریافتی PDF معتبر نیست');
-      }
-
-      // بررسی سربرگ ZIP/APK
-      if (isApk &&
-          !hasPrefix(
-            bytes,
-            <int>[80, 75], // PK
-          )) {
-        throw Exception('فایل دریافتی معتبر نیست');
-      }
-
-      await file.writeAsBytes(
-        bytes,
-        flush: true,
-      );
-
-      // حفظ قانون حداکثر فایل‌های کش
-      await _manageCacheLimit();
-    }
-
-    // بستن دیالوگ دانلود
-    if (downloadDialogIsOpen && mounted) {
-      Navigator.of(context, rootNavigator: true).pop();
-      downloadDialogIsOpen = false;
-    }
-
-    // باز کردن فایل بر اساس نوع آن
-    if (isPdf) {
-      if (!mounted) return;
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => PdfViewerScreen(
-            filePath: filePath,
-            title: item.name,
+              SizedBox(height: 16),
+              Text(
+                'در حال دریافت فایل...\nلطفاً شکیبا باشید',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 13,
+                ),
+              ),
+            ],
           ),
         ),
+      ),
+    );
+
+    try {
+      final dir = await getTemporaryDirectory();
+
+      final fileName = _getLocalFileName(
+        item,
+        isPdf: isPdf,
+        isApk: isApk,
       );
-    } else {
-      // برای APK، ZIP و سایر فایل‌ها
-      final lower = fileName.toLowerCase();
-      String? mimeType;
-      if (lower.endsWith('.apk')) {
-        mimeType = 'application/vnd.android.package-archive';
-      } else if (lower.endsWith('.zip')) {
-        mimeType = 'application/zip';
+
+      final filePath = '${dir.path}/$fileName';
+      final file = File(filePath);
+
+      bool hasPrefix(List<int> bytes, List<int> prefix) {
+        if (bytes.length < prefix.length) return false;
+        for (int i = 0; i < prefix.length; i++) {
+          if (bytes[i] != prefix[i]) return false;
+        }
+        return true;
       }
 
-      final result = await OpenFilex.open(
-        filePath,
-        type: mimeType,
-      );
+      bool looksLikeHtml(List<int> bytes) {
+        if (bytes.isEmpty) return false;
+        final text = utf8.decode(bytes, allowMalformed: true).trimLeft().toLowerCase();
+        return text.startsWith('<!doctype html') ||
+            text.startsWith('<html') ||
+            text.contains('<title>google drive') ||
+            text.contains('google drive');
+      }
 
-      if (result.type != ResultType.done && mounted) {
+      Future<List<int>> readFileSample() {
+        return file.openRead(0, 512).fold<List<int>>(
+          <int>[],
+          (buffer, chunk) {
+            buffer.addAll(chunk);
+            return buffer;
+          },
+        );
+      }
+
+      bool shouldDownload = !await file.exists();
+
+      if (!shouldDownload) {
+        final fileLength = await file.length();
+        if (fileLength == 0) {
+          shouldDownload = true;
+        } else {
+          final cachedSample = await readFileSample();
+          if (looksLikeHtml(cachedSample)) {
+            shouldDownload = true;
+          } else if (isPdf && !hasPrefix(cachedSample, <int>[37, 80, 68, 70])) {
+            shouldDownload = true;
+          } else if (isApk && !hasPrefix(cachedSample, <int>[80, 75])) {
+            shouldDownload = true;
+          }
+        }
+      }
+
+      if (shouldDownload) {
+        final downloadUri = Uri.parse(
+          'https://docs.google.com/uc?export=download&id=${item.id}&confirm=t',
+        );
+
+        final response = await http.get(downloadUri).timeout(
+          const Duration(seconds: 90),
+        );
+
+        if (response.statusCode != 200) {
+          throw Exception('خطا در دریافت فایل (${response.statusCode})');
+        }
+
+        final bytes = response.bodyBytes;
+        if (bytes.isEmpty) {
+          throw Exception('فایل دریافتی خالی است');
+        }
+
+        final contentType = response.headers['content-type']?.toLowerCase() ?? '';
+        if (contentType.contains('text/html') || looksLikeHtml(bytes)) {
+          throw Exception('گوگل‌درایو به‌جای فایل، صفحهٔ HTML ارسال کرده است');
+        }
+
+        if (isPdf && !hasPrefix(bytes, <int>[37, 80, 68, 70])) {
+          throw Exception('فایل دریافتی PDF معتبر نیست');
+        }
+
+        if (isApk && !hasPrefix(bytes, <int>[80, 75])) {
+          throw Exception('فایل دریافتی معتبر نیست');
+        }
+
+        await file.writeAsBytes(bytes, flush: true);
+        await _manageCacheLimit();
+      }
+
+      if (downloadDialogIsOpen && mounted) {
+        Navigator.of(context, rootNavigator: true).pop();
+        downloadDialogIsOpen = false;
+      }
+
+      if (isPdf) {
+        if (!mounted) return;
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => PdfViewerScreen(
+              filePath: filePath,
+              title: item.name,
+            ),
+          ),
+        );
+      } else {
+        final lower = fileName.toLowerCase();
+        String? mimeType;
+        if (lower.endsWith('.apk')) {
+          mimeType = 'application/vnd.android.package-archive';
+        } else if (lower.endsWith('.zip')) {
+          mimeType = 'application/zip';
+        }
+
+        final result = await OpenFilex.open(
+          filePath,
+          type: mimeType,
+        );
+
+        if (result.type != ResultType.done && mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('عدم موفقیت در باز کردن فایل: ${result.message}'),
+              backgroundColor: Colors.redAccent,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (downloadDialogIsOpen && mounted) {
+        Navigator.of(context, rootNavigator: true).pop();
+        downloadDialogIsOpen = false;
+      }
+
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('عدم موفقیت در باز کردن فایل: ${result.message}'),
+            content: Text('خطا: ${e.toString().replaceAll("Exception: ", "")}'),
             backgroundColor: Colors.redAccent,
           ),
         );
       }
     }
-  } catch (e) {
-    if (downloadDialogIsOpen && mounted) {
-      Navigator.of(context, rootNavigator: true).pop();
-      downloadDialogIsOpen = false;
-    }
-
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('خطا: ${e.toString().replaceAll("Exception: ", "")}'),
-          backgroundColor: Colors.redAccent,
-        ),
-      );
-    }
   }
-}
 
     // حفظ سیستم ثبت فایل خوانده‌شده
     await _markAsRead(item.id);
@@ -2581,7 +2518,7 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
 }
 
 // ==========================================
-// صفحه و منطق تست شخصیت‌شناسی MBTI
+// صفحه و منطق تست شخصیت‌شناسی MBTI (کامل و مدرن)
 // ==========================================
 
 class MbtiQuestion {
@@ -2612,93 +2549,98 @@ class _MbtiQuizScreenState extends State<MbtiQuizScreen> {
   bool _showResult = false;
   String _calculatedType = '';
 
+  // بانک کامل ۳۲ سوال آزمون
   static const List<MbtiQuestion> questions = [
-    // بخش اول: E یا I
-    MbtiQuestion(title: 'بخش اول: برون‌گرایی (E) یا درون‌گرایی (I) - سوال ۱', optA: 'بعد از یک مهمانی شلوغ، احساس سرزندگی می‌کنم', optB: 'بعد از یک مهمانی شلوغ، احساس خستگی می‌کنم', typeA: 'E', typeB: 'I'),
-    MbtiQuestion(title: 'بخش اول: برون‌گرایی (E) یا درون‌گرایی (I) - سوال ۲', optA: 'ترجیح می‌دهم در گروه فکر کنم و حرف بزنم', optB: 'ترجیح می‌دهم اول تنها فکر کنم، بعد بگویم', typeA: 'E', typeB: 'I'),
-    MbtiQuestion(title: 'بخش اول: برون‌گرایی (E) یا درون‌گرایی (I) - سوال ۳', optA: 'دوستان زیادی دارم و راحت آشنا می‌شوم', optB: 'دوستان کمی دارم اما روابطم عمیق است', typeA: 'E', typeB: 'I'),
-    MbtiQuestion(title: 'بخش اول: برون‌گرایی (E) یا درون‌گرایی (I) - سوال ۴', optA: 'سکوت در جمع برایم ناراحت‌کننده است', optB: 'سکوت در جمع برایم طبیعی و راحت است', typeA: 'E', typeB: 'I'),
-    MbtiQuestion(title: 'بخش اول: برون‌گرایی (E) یا درون‌گرایی (I) - سوال ۵', optA: 'وقتی تنها هستم، دنبال کاری برای انجام دادن می‌گردم', optB: 'وقتی تنها هستم، از آن لذت می‌برم', typeA: 'E', typeB: 'I'),
-    MbtiQuestion(title: 'بخش اول: برون‌گرایی (E) یا درون‌گرایی (I) - سوال ۶', optA: 'در جمع انرژی می‌گیرم', optB: 'در خلوت انرژی می‌گیرم', typeA: 'E', typeB: 'I'),
-    MbtiQuestion(title: 'بخش اول: برون‌گرایی (E) یا درون‌گرایی (I) - سوال ۷', optA: 'ترجیح می‌دهم با تلفن صحبت کنم', optB: 'ترجیح می‌دهم پیام بدهم', typeA: 'E', typeB: 'I'),
-    MbtiQuestion(title: 'بخش اول: برون‌گرایی (E) یا درون‌گرایی (I) - سوال ۸', optA: 'اغلب قبل از فکر کردن حرف می‌زنم', optB: 'اغلب قبل از حرف زدن فکر می‌کنم', typeA: 'E', typeB: 'I'),
+    // بعد ۱: E یا I
+    MbtiQuestion(title: 'بخش ۱: برون‌گرایی (E) یا درون‌گرایی (I) - سوال ۱', optA: 'بعد از یک مهمانی شلوغ، احساس سرزندگی می‌کنم', optB: 'بعد از یک مهمانی شلوغ، احساس خستگی می‌کنم', typeA: 'E', typeB: 'I'),
+    MbtiQuestion(title: 'بخش ۱: برون‌گرایی (E) یا درون‌گرایی (I) - سوال ۲', optA: 'ترجیح می‌دهم در گروه فکر کنم و حرف بزنم', optB: 'ترجیح می‌دهم اول تنها فکر کنم، بعد بگویم', typeA: 'E', typeB: 'I'),
+    MbtiQuestion(title: 'بخش ۱: برون‌گرایی (E) یا درون‌گرایی (I) - سوال ۳', optA: 'دوستان زیادی دارم و راحت آشنا می‌شوم', optB: 'دوستان کمی دارم اما روابطم عمیق است', typeA: 'E', typeB: 'I'),
+    MbtiQuestion(title: 'بخش ۱: برون‌گرایی (E) یا درون‌گرایی (I) - سوال ۴', optA: 'سکوت در جمع برایم ناراحت‌کننده است', optB: 'سکوت در جمع برایم طبیعی و راحت است', typeA: 'E', typeB: 'I'),
+    MbtiQuestion(title: 'بخش ۱: برون‌گرایی (E) یا درون‌گرایی (I) - سوال ۵', optA: 'وقتی تنها هستم، دنبال کاری برای انجام دادن می‌گردم', optB: 'وقتی تنها هستم، از آن لذت می‌برم', typeA: 'E', typeB: 'I'),
+    MbtiQuestion(title: 'بخش ۱: برون‌گرایی (E) یا درون‌گرایی (I) - سوال ۶', optA: 'در جمع انرژی می‌گیرم', optB: 'در خلوت انرژی می‌گیرم', typeA: 'E', typeB: 'I'),
+    MbtiQuestion(title: 'بخش ۱: برون‌گرایی (E) یا درون‌گرایی (I) - سوال ۷', optA: 'ترجیح می‌دهم با تلفن صحبت کنم', optB: 'ترجیح می‌دهم پیام بدهم', typeA: 'E', typeB: 'I'),
+    MbtiQuestion(title: 'بخش ۱: برون‌گرایی (E) یا درون‌گرایی (I) - سوال ۸', optA: 'اغلب قبل از فکر کردن حرف می‌زنم', optB: 'اغلب قبل از حرف زدن فکر می‌کنم', typeA: 'E', typeB: 'I'),
 
-    // بخش دوم: S یا N
-    MbtiQuestion(title: 'بخش دوم: حسی (S) یا شهودی (N) - سوال ۱', optA: 'به جزئیات و واقعیت‌های ملموس توجه می‌کنم', optB: 'به الگوها و معناهای پنهان توجه می‌کنم', typeA: 'S', typeB: 'N'),
-    MbtiQuestion(title: 'بخش دوم: حسی (S) یا شهودی (N) - سوال ۲', optA: 'ترجیح می‌دهم دستورالعمل گام‌به‌گام داشته باشم', optB: 'ترجیح می‌دهم کلیت کار را بفهمم و خودم جزئیات را پر کنم', typeA: 'S', typeB: 'N'),
-    MbtiQuestion(title: 'بخش دوم: حسی (S) یا شهودی (N) - سوال ۳', optA: 'به تجربه‌ی عملی بیشتر از نظریه اعتماد دارم', optB: 'ایده‌های جدید و نظریه‌ها برایم جذاب‌اند', typeA: 'S', typeB: 'N'),
-    MbtiQuestion(title: 'بخش دوم: حسی (S) یا شهودی (N) - سوال ۴', optA: '«واقع‌بین» بودن برایم مهم است', optB: '«خلاق» بودن برایم مهم است', typeA: 'S', typeB: 'N'),
-    MbtiQuestion(title: 'بخش دوم: حسی (S) یا شهودی (N) - سوال ۵', optA: 'از روش‌های آزموده‌شده استفاده می‌کنم', optB: 'دنبال راه‌های جدید می‌گردم', typeA: 'S', typeB: 'N'),
-    MbtiQuestion(title: 'بخش دوم: حسی (S) یا شهودی (N) - سوال ۶', optA: 'حال حاضر برایم مهم‌تر از آینده است', optB: 'آینده و امکانات برایم جذاب‌تر از حال است', typeA: 'S', typeB: 'N'),
-    MbtiQuestion(title: 'بخش دوم: حسی (S) یا شهودی (N) - سوال ۷', optA: 'وقتی چیزی می‌خوانم، به کلمات دقیق توجه می‌کنم', optB: 'وقتی چیزی می‌خوانم، دنبال معنای کلی می‌گردم', typeA: 'S', typeB: 'N'),
-    MbtiQuestion(title: 'بخش دوم: حسی (S) یا شهودی (N) - سوال ۸', optA: 'از کارهای دقیق و تکراری خسته نمی‌شوم', optB: 'کارهای تکراری زود خسته‌ام می‌کنند', typeA: 'S', typeB: 'N'),
+    // بعد ۲: S یا N
+    MbtiQuestion(title: 'بخش ۲: حسی (S) یا شهودی (N) - سوال ۹', optA: 'به جزئیات و واقعیت‌های ملموس توجه می‌کنم', optB: 'به الگوها و معناهای پنهان توجه می‌کنم', typeA: 'S', typeB: 'N'),
+    MbtiQuestion(title: 'بخش ۲: حسی (S) یا شهودی (N) - سوال ۱۰', optA: 'ترجیح می‌دهم دستورالعمل گام‌به‌گام داشته باشم', optB: 'ترجیح می‌دهم کلیت کار را بفهمم و خودم جزئیات را پر کنم', typeA: 'S', typeB: 'N'),
+    MbtiQuestion(title: 'بخش ۲: حسی (S) یا شهودی (N) - سوال ۱۱', optA: 'به تجربه‌ی عملی بیشتر از نظریه اعتماد دارم', optB: 'ایده‌های جدید و نظریه‌ها برایم جذاب‌اند', typeA: 'S', typeB: 'N'),
+    MbtiQuestion(title: 'بخش ۲: حسی (S) یا شهودی (N) - سوال ۱۲', optA: '«واقع‌بین» بودن برایم مهم است', optB: '«خلاق» بودن برایم مهم است', typeA: 'S', typeB: 'N'),
+    MbtiQuestion(title: 'بخش ۲: حسی (S) یا شهودی (N) - سوال ۱۳', optA: 'از روش‌های آزموده‌شده استفاده می‌کنم', optB: 'دنبال راه‌های جدید می‌گردم', typeA: 'S', typeB: 'N'),
+    MbtiQuestion(title: 'بخش ۲: حسی (S) یا شهودی (N) - سوال ۱۴', optA: 'حال حاضر برایم مهم‌تر از آینده است', optB: 'آینده و امکانات برایم جذاب‌تر از حال است', typeA: 'S', typeB: 'N'),
+    MbtiQuestion(title: 'بخش ۲: حسی (S) یا شهودی (N) - سوال ۱۵', optA: 'وقتی چیزی می‌خوانم، به کلمات دقیق توجه می‌کنم', optB: 'وقتی چیزی می‌خوانم، دنبال معنای کلی می‌گردم', typeA: 'S', typeB: 'N'),
+    MbtiQuestion(title: 'بخش ۲: حسی (S) یا شهودی (N) - سوال ۱۶', optA: 'از کارهای دقیق و تکراری خسته نمی‌شوم', optB: 'کارهای تکراری زود خسته‌ام می‌کنند', typeA: 'S', typeB: 'N'),
 
-    // بخش سوم: T یا F
-    MbtiQuestion(title: 'بخش سوم: تفکری (T) یا احساسی (F) - سوال ۱', optA: 'در تصمیم‌گیری، منطق و داده برایم اولویت دارد', optB: 'در تصمیم‌گیری، احساسات و ارزش‌ها برایم اولویت دارد', typeA: 'T', typeB: 'F'),
-    MbtiQuestion(title: 'بخش سوم: تفکری (T) یا احساسی (F) - سوال ۲', optA: 'انتقاد صادقانه را به تعریف مؤدبانه ترجیح می‌دهم', optB: 'انتقاد، حتی اگر درست باشد، اگر بی‌ملاحظه باشد آزارم می‌دهد', typeA: 'T', typeB: 'F'),
-    MbtiQuestion(title: 'بخش سوم: تفکری (T) یا احساسی (F) - سوال ۳', optA: 'در تعارض، دنبال راه‌حل منطقی می‌گردم', optB: 'در تعارض، اول می‌خواهم احساسم شنیده شود', typeA: 'T', typeB: 'F'),
-    MbtiQuestion(title: 'بخش سوم: تفکری (T) یا احساسی (F) - سوال ۴', optA: '«عادلانه» بودن برایم مهم‌تر از «مهربانانه» بودن است', optB: '«مهربانانه» بودن برایم مهم‌تر از «عادلانه» بودن است', typeA: 'T', typeB: 'F'),
-    MbtiQuestion(title: 'بخش سوم: تفکری (T) یا احساسی (F) - سوال ۵', optA: 'می‌توانم تصمیم سختی بگیرم بدون اینکه احساساتم مانع شود', optکری (T) یا احساسی (F) - سوال ۱', optA: 'در تصمیم‌گیری، منطق و داده برایم اولویت دارد', optB: 'در تصمیم‌گیری، احساسات و ارزش‌ها برایم اولویت دارد', typeA: 'T', typeB: 'F'),
-    MbtiQuestion(title: 'بخش سوم: تفکری (T) یا احساسی (F) - سوال ۲', optA: 'انتقاد صادقانه را به تعریف مؤدبانه ترجیح می‌دهم', optB: 'انتقاد، حتی اگر درست باشد، اگر بی‌ملاحظه باشد آزارم می‌دهد', typeA: 'T', typeB: 'F'),
-    MbtiQuestion(title: 'بخش سوم: تفکری (T) یا احساسی (F) - سوال ۳', optA: 'در تعارض، دنبال راه‌حل منطقی می‌گردم', optB: 'در تعارض، اول می‌خواهم احساسم شنیده شود', typeA: 'T', typeB: 'F'),
-    MbtiQuestion(title: 'بخش سوم: تفکری (T) یا احساسی (F) - سوال ۴', optA: '«عادلانه» بودن برایم مهم‌تر از «مهربانانه» بودن است', optB: '«مهربانانه» بودن برایم مهم‌تر از «عادلانه» بودن است', typeA: 'T', typeB: 'F'),
-    MbtiQuestion(title: 'بخش سوم: تفکری (T) یا احساسی (F) - سوال ۵', optA: 'می‌توانم تصمیم سختی بگیرم بدون اینکه احساساتم مانع شود', optB: 'تصمیم‌های سخت که به کسی آسیب می‌زند برایم دشوار است', typeA: 'T', typeB: 'F'),
-    MbtiQuestion(title: 'بخش سوم: تفکری (T) یا احساسی (F) - سوال ۶', optA: 'وقتی کسی مشکل دارد، اول راه‌حل پیشنهاد می‌دهم', optB: 'وقتی کسی مشکل دارد، اول گوش می‌دهم و همدلی می‌کنم',', optA: 'تغییر برنامه در لحظه آخر آزارم می‌دهد', optB: 'تغییر برنامه در لحظه آخر هیجان‌انگیز است', typeA: 'J', typeB: 'P'),
-    MbtiQuestion(title: 'بخش چهارم: قضاوتی (J) یا ادراکی (P) - سوال ۴', optA: 'دوست دارم تصمیم‌ها گرفته شوند و کار تمام شود', optB: 'دوست دارم گزینه‌ها باز بمانند', typeA: 'J', typeB: 'P'),
-    MbtiQuestion(title: 'بخش چهارم: قضاوتی (J) یا ادراکی (P) - سوال ۵', optA: 'فهرست کارها و برنامه روزانه دارم', optB: 'فهرست کارها برایم محدودکننده است', typeA: 'J', typeB: 'P'),
-    MbtiQuestion(title: 'بخش چهارم: قضاوتی (J) یا ادراکی (P) - سوال ۶', optA: 'محیط نامرتب حواسم را پرت می‌کند', optB: 'می‌توانم در محیط نامرتب هم کار کنم', typeA: 'J', typeB: 'P'),
-    MbtiQuestion(title: 'بخش چهارم: قضاوتی (J) یا ادراکی (P) - سوال ۷', optA: 'ترجیح می‌دهم همه چیز مشخص و قطعی باشد', optB: 'با ابهام و عدم قطعیت راحتم', typeA: 'J', typeB: 'P'),
-    MbtiQuestion(title: 'بخش چهارم: قضاوتی (J) یا ادراکی (P) - سوال ۸', optA: 'وقتی کاری نیمه‌تمام است، ذهنم درگیر است', optB: 'می‌توانم چند کار نیمه‌تمام داشته باشم بدون استرس', typeA: 'J', typeB: 'P'),
+    // بعد ۳: T یا F
+    MbtiQuestion(title: 'بخش ۳: تفکری (T) یا احساسی (F) - سوال ۱۷', optA: 'در تصمیم‌گیری، منطق و داده برایم اولویت دارد', optB: 'در تصمیم‌گیری، احساسات و ارزش‌ها برایم اولویت دارد', typeA: 'T', typeB: 'F'),
+    MbtiQuestion(title: 'بخش ۳: تفکری (T) یا احساسی (F) - سوال ۱۸', optA: 'انتقاد صادقانه را به تعریف مؤدبانه ترجیح می‌دهم', optB: 'انتقاد، حتی اگر درست باشد، اگر بی‌ملاحظه باشد آزارم می‌دهد', typeA: 'T', typeB: 'F'),
+    MbtiQuestion(title: 'بخش ۳: تفکری (T) یا احساسی (F) - سوال ۱۹', optA: 'در تعارض، دنبال راه‌حل منطقی می‌گردم', optB: 'در تعارض، اول می‌خواهم احساسم شنیده شود', typeA: 'T', typeB: 'F'),
+    MbtiQuestion(title: 'بخش ۳: تفکری (T) یا احساسی (F) - سوال ۲۰', optA: '«عادلانه» بودن برایم مهم‌تر از «مهربانانه» بودن است', optB: '«مهربانانه» بودن برایم مهم‌تر از «عادلانه» بودن است', typeA: 'T', typeB: 'F'),
+    MbtiQuestion(title: 'بخش ۳: تفکری (T) یا احساسی (F) - سوال ۲۱', optA: 'می‌توانم تصمیم سختی بگیرم بدون اینکه احساساتم مانع شود', optB: 'تصمیم‌های سخت که به کسی آسیب می‌زند برایم دشوار است', typeA: 'T', typeB: 'F'),
+    MbtiQuestion(title: 'بخش ۳: تفکری (T) یا احساسی (F) - سوال ۲۲', optA: 'وقتی کسی مشکل دارد، اول راه‌حل پیشنهاد می‌دهم', optB: 'وقتی کسی مشکل دارد، اول گوش می‌دهم و همدلی می‌کنم', typeA: 'T', typeB: 'F'),
+    MbtiQuestion(title: 'بخش ۳: تفکری (T) یا احساسی (F) - سوال ۲۳', optA: 'صداقت را بر مدارا ترجیح می‌دهم', optB: 'مدارا را بر صداقت بی‌پرده ترجیح می‌دهم', typeA: 'T', typeB: 'F'),
+    MbtiQuestion(title: 'بخش ۳: تفکری (T) یا احساسی (F) - سوال ۲۴', optA: 'اشتباهات دیگران را تحلیل می‌کنم', optB: 'اشتباهات دیگران را می‌بخشم و نادیده می‌گیرم', typeA: 'T', typeB: 'F'),
+
+    // بعد ۴: J یا P
+    MbtiQuestion(title: 'بخش ۴: قضاوتی (J) یا ادراکی (P) - سوال ۲۵', optA: 'برنامه‌ریزی دقیق دارم و طبق آن پیش می‌روم', optB: 'دوست دارم منعطف باشم و بر اساس شرایط تصمیم بگیرم', typeA: 'J', typeB: 'P'),
+    MbtiQuestion(title: 'بخش ۴: قضاوتی (J) یا ادراکی (P) - سوال ۲۶', optA: 'کارها را زودتر از موعد تمام می‌کنم', optB: 'کارها را نزدیک مهلت نهایی انجام می‌دهم', typeA: 'J', typeB: 'P'),
+    MbtiQuestion(title: 'بخش ۴: قضاوتی (J) یا ادراکی (P) - سوال ۲۷', optA: 'تغییر برنامه در لحظه آخر آزارم می‌دهد', optB: 'تغییر برنامه در لحظه آخر هیجان‌انگیز است', typeA: 'J', typeB: 'P'),
+    MbtiQuestion(title: 'بخش ۴: قضاوتی (J) یا ادراکی (P) - سوال ۲۸', optA: 'دوست دارم تصمیم‌ها گرفته شوند و کار تمام شود', optB: 'دوست دارم گزینه‌ها باز بمانند', typeA: 'J', typeB: 'P'),
+    MbtiQuestion(title: 'بخش ۴: قضاوتی (J) یا ادراکی (P) - سوال ۲۹', optA: 'فهرست کارها و برنامه روزانه دارم', optB: 'فهرست کارها برایم محدودکننده است', typeA: 'J', typeB: 'P'),
+    MbtiQuestion(title: 'بخش ۴: قضاوتی (J) یا ادراکی (P) - سوال ۳۰', optA: 'محیط نامرتب حواسم را پرت می‌کند', optB: 'می‌توانم در محیط نامرتب هم کار کنم', typeA: 'J', typeB: 'P'),
+    MbtiQuestion(title: 'بخش ۴: قضاوتی (J) یا ادراکی (P) - سوال ۳۱', optA: 'ترجیح می‌دهم همه چیز مشخص و قطعی باشد', optB: 'با ابهام و عدم قطعیت راحتم', typeA: 'J', typeB: 'P'),
+    MbtiQuestion(title: 'بخش ۴: قضاوتی (J) یا ادراکی (P) - سوال ۳۲', optA: 'وقتی کاری نیمه‌تمام است، ذهنم درگیر است', optB: 'می‌توانم چند کار نیمه‌تمام داشته باشم بدون استرس', typeA: 'J', typeB: 'P'),
   ];
 
+  // شرح و نام‌گذاری دقیق تمامی ۱۶ تیپ شخصیتی
   static const Map<String, Map<String, String>> personalityDetails = {
     'INFJ': {
       'title': 'حامی و مشاور معنوی (The Advocate)',
-      'desc': 'شما فردی با بصیرت عمیق، آرمان‌گرا و سرشار از بینش معنوی هستید. ارتباط میان معانی پنهان عالم را به خوبی درک می‌کنید و همواره به دنبال هدایت، رشد و کمال دیگران می‌باشید. وجدان بیدار، سکوت پرمعنا و نگاه تعالی‌بخش از ویژگی‌های بارز شماست.'
+      'desc': 'شما فردی با بصیرت عمیق، آرمان‌گرا و دلسوز هستید. معنای عمیق‌تری در رویدادها و پیوندهای انسانی می‌جویید و مشتاق هدایت جامعه به سوی کمال و اخلاق‌مداری می‌باشید.'
     },
     'INTJ': {
       'title': 'معمار و استراتژیست (The Architect)',
-      'desc': 'فکری نظام‌مند، نوآور و دوراندیش دارید. ساختارهای فکری پیچیده را به سادگی تحلیل می‌کنید و همواره در پی کمال‌بخشی به سیستم‌ها، برنامه‌ها و نظریه‌ها هستید. تصمیم‌گیری‌های شما مبتنی بر منطق محض و دوراندیشی عمیق است.'
+      'desc': 'فکری نظام‌مند، نوآور و دوراندیش دارید. ساختارها و الگوها را عمیقاً تحلیل کرده و همواره در پی طراحی مسیرهای بهینه و تحقق طرح‌های بلندمدت با پشتکار فراوان هستید.'
     },
     'INFP': {
       'title': 'میانجی و سالک آرمان‌گرا (The Mediator)',
-      'desc': 'شخصیتی لطیف، متفکر و پایبند به ارزش‌های عمیق درونی دارید. به دنبال اصالت، خلوص نیت و زیبایی‌های معنوی هستید. زبان هنر، شعر و تفکر عمیق را به نیکی می‌فهمید و همواره با مهربانی و درک بالا با دیگران تعامل می‌کنید.'
+      'desc': 'شخصیتی لطیف، متفکر و پایبند به ارزش‌های اصیل انسانی دارید. همواره در جستجوی زیبایی‌های باطنی و حقیقت بوده و با همدلی و آرامش با جهان پیرامون تعامل می‌کنید.'
     },
     'INTP': {
       'title': 'متفکر و پژوهشگر حقیقت (The Logician)',
-      'desc': 'عاشق کاوش در نظریه‌ها، کشف قوانین حاکم بر هستی و حل مسائل فلسفی و منطقی هستید. ذهنی تحلیل‌گر، مستقل و نقاد دارید و از کشف ارتباط میان مفاهیم نوظهور و ناشناخته عمیقاً لذت می‌برید.'
+      'desc': 'عاشق کاوش در نظریه‌ها، کشف قوانین حاکم بر هستی و حل معماهای پیچیده‌اید. صداقت فکری و رسیدن به درکی جامع از پدیده‌ها بزرگ‌ترین انگیزه درونی شماست.'
     },
     'ENFJ': {
       'title': 'راهنما و مربی الهام‌بخش (The Protagonist)',
-      'desc': 'رهبری پرجاذبه، دلسوز و آرمان‌خواه هستید. استعداد شگرفی در برانگیختن انگیزه‌های معنوی و انسانی در دیگران دارید و با شور و اشتیاق وافر برای ساختن جامعه‌ای بهتر و رشددهنده‌تر تلاش می‌کنید.'
+      'desc': 'رهبری پرجاذبه، دلسوز و آرمان‌خواه هستید. توانایی شگرفی در برانگیختن استعدادهای دیگران و هدایت جمعی به سوی اهداف متعالی و وحدت‌بخش دارید.'
     },
     'ENTJ': {
       'title': 'فرمانده و مدیر راهبردی (The Commander)',
-      'desc': 'شخصیتی قاطع، مقتدر و سازمان‌دهنده دارید. نگاه کلان، توانایی در ترسیم اهداف بلندمدت و بسیج امکانات برای دستیابی به مقاصد بزرگ از صفات متمایز شماست. با صلابت بر موانع غلبه می‌کنید.'
+      'desc': 'شخصیتی قاطع، مقتدر و سازمان‌دهنده دارید. با دیدگاهی روشن و تکیه بر ساختارهای مستحکم، چالش‌ها را به فرصت تبدیل کرده و گروه‌ها را به سمت پیروزی رهبری می‌نمایید.'
     },
     'ENFP': {
       'title': 'پیک الهام و مشتاق اندیشه (The Campaigner)',
-      'desc': 'پر از شور و شوق، خلاقیت و دیدگاه‌های بدیع هستید. روابط انسانی گرم و پرمحبتی برقرار می‌کنید و در هر موقعیتی، امکانات نو و افق‌های امیدبخش را مشاهده و به اطرافیان منتقل می‌نمایید.'
+      'desc': 'پر از شور و شوق، خلاقیت و دیدگاه‌های نوآورانه هستید. روابط پرمعنا با انسان‌ها برقرار می‌کنید و زندگی را عرصه‌ای سرشار از امکان‌ها و امیدهای نو می‌بینید.'
     },
     'ENTP': {
       'title': 'مناظره‌گر و نوآور پویا (The Debater)',
-      'desc': 'فکری پویا، چابک و سرشار از شوخ‌طبعی و نبوغ دارید. از به چالش کشیدن باورهای سنتی و رسیدن به افق‌های جدید لذت می‌برید و در بحث‌های منطقی و اقناعی بسیار توانمندید.'
+      'desc': 'فکری پویا، چابک و سرشار از شوخ‌طبعی و نبوغ دارید. با به چالش کشیدن باورهای سنتی و ارائه ایده‌های بدیع، مسیرهای ناشناخته و جذاب را پیش پای دیگران می‌گشایید.'
     },
     'ISFJ': {
       'title': 'مدافع و خادم فداکار (The Protector)',
-      'desc': 'بسیار صبور، باوفا، خدمت‌گزار و مبادی آداب هستید. با آرامش و اخلاص کامل، بدون هیچ چشم‌داشتی به یاری اطرافیان می‌شتابید و در صیانت از ارزش‌ها و سنت‌های نیکو ثبات قدم دارید.'
+      'desc': 'بسیار صبور، باوفا، خدمت‌گزار و مبادی آداب هستید. با تعهدی بی‌ادعا از سنت‌ها و حریم امن خانواده و اطرافیان محافظت کرده و پایبند به تکالیف خویشید.'
     },
     'ISTJ': {
       'title': 'بازرس و امین وظیفه‌شناس (The Inspector)',
-      'desc': 'شخصیتی منظم، واقع‌بین، مسئولیت‌پذیر و پایبند به انضباط هستید. دقت بالا در انجام تکالیف، رعایت امانت و اهتمام به جزئیات و حقایق ملموس، شما را به تکیه‌گاهی مطمئن تبدیل کرده است.'
+      'desc': 'شخصیتی منظم، واقع‌بین، مسئولیت‌پذیر و استوار دارید. برای انضباط، اصول و وظایف اهمیت بنیادین قائلید و با دقت تمام امور را به سرانجام می‌رسانید.'
     },
     'ESFJ': {
       'title': 'سفیر مهر و حامی جامعه (The Caregiver)',
-      'desc': 'کانون گرمی، محبت و هماهنگی در جمع هستید. خدمت به اهل منزل و یاران، حفظ پیوندهای اجتماعی و مراقبت از سلامت روحی دیگران، اولویت نخست زندگی شما به شمار می‌رود.'
+      'desc': 'کانون گرمی، محبت و هماهنگی در جمع هستید. به نیازهای ملموس دیگران عمیقاً توجه دارید و در برپایی نظم، الفت و صمیمیت اجتماعی نقشی بی‌بدیل ایفا می‌کنید.'
     },
     'ESTJ': {
       'title': 'ناظر و مدیر نظم‌آفرین (The Executive)',
-      'desc': 'منظم، واقع‌گرا، صریح و سخت‌کوش هستید. در مدیریت منابع، ساماندهی امور روزمره و برقراری رویه‌های عادلانه و ساختاریافته استادی تمام‌عیار به شمار می‌روید.'
+      'desc': 'منظم، واقع‌گرا، صریح و سخت‌کوش هستید. در مدیریت منابع، ساماندهی وظایف اجرایی و برقراری رویه‌های شفاف و قانونی با اقتدار و کارآمدی عمل می‌کنید.'
     },
     'ISFP': {
       'title': 'هنرمند و کاوشگر زیبایی (The Adventurer)',
@@ -2741,13 +2683,13 @@ class _MbtiQuizScreenState extends State<MbtiQuizScreen> {
       if (_answers[i] == 'P') countP++;
     }
 
-    final String res = (countE >= countI ? 'E' : 'I') +
-        (countS >= countN ? 'S' : 'N') +
-        (countT >= countF ? 'T' : 'F') +
-        (countJ >= countP ? 'J' : 'P');
+    final eOrI = countE >= countI ? 'E' : 'I';
+    final sOrN = countS >= countN ? 'S' : 'N';
+    final tOrF = countT >= countF ? 'T' : 'F';
+    final jOrP = countJ >= countP ? 'J' : 'P';
 
     setState(() {
-      _calculatedType = res;
+      _calculatedType = '$eOrI$sOrN$tOrF$jOrP';
       _showResult = true;
     });
   }
@@ -2762,329 +2704,342 @@ class _MbtiQuizScreenState extends State<MbtiQuizScreen> {
 
   @override
   Widget build(BuildContext context) {
+    const primaryColor = Color(0xFFFF6B4A);
+    const secondaryColor = Color(0xFF00ADB5);
+    const darkCardColor = Color(0xFF222831);
+    const surfaceColor = Color(0xFF2C3440);
+
+    final int answeredCount = _answers.length;
+    final double progress = answeredCount / questions.length;
+
     if (_showResult) {
       final details = personalityDetails[_calculatedType] ?? {
         'title': 'تیپ شخصیتی $_calculatedType',
-        'desc': 'توضیحات تکمیلی برای این تیپ ثبت شده است.'
+        'desc': 'شرح این تیپ شخصیتی در دسترس نیست.'
       };
 
-      return SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [Color(0xFF1B3B4B), Color(0xFF132A36)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: const Color(0xFFFF6B4A).withOpacity(0.8), width: 1.5),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.3),
-                    blurRadius: 15,
-                    offset: const Offset(0, 6),
-                  ),
-                ],
-              ),
+      return Directionality(
+        textDirection: TextDirection.rtl,
+        child: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Color(0xFF1E222D), Color(0xFF12141A)],
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+            ),
+          ),
+          child: Center(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 28),
               child: Column(
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   Container(
-                    padding: const EdgeInsets.all(12),
+                    padding: const EdgeInsets.all(24),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFFF6B4A).withOpacity(0.15),
-                      shape: BoxShape.circle,
+                      color: surfaceColor,
+                      borderRadius: BorderRadius.circular(24), [
+                        BoxShadow(
+                          color: primaryColor.withOpacity(0.18),
+                          blurRadius: 28,
+                          offset: const Offset(0, 10),
+                        ),
+                      ],
                     ),
-                    child: const Icon(Icons.stars_rounded, color: Color(0xFFFF6B4A), size: 54),
-                  ),
-                  const SizedBox(height: 14),
-                  const Text(
-                    'نتیجه ارزیابی شخصیت شما',
-                    style: TextStyle(color: Colors.white70, fontSize: 14),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    _calculatedType,
-                    style: const TextStyle(
-                      color: Color(0xFFFF6B4A),
-                      fontSize: 36,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 3,
+                    child: Column(
+                      children: [
+                        BoxShadow(
+                          color: primaryColor.withOpacity(0.18),
+                          blurRadius: 28,
+                          offset: const Offset(0, 10),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: primaryColor.withOpacity(0.12),
+                            border: Border.all(color: primaryColor, width: 2),
+                          ),
+                          child: const Icon(Icons.psychology_rounded, color: primaryColor, size: 54),
+                        ),
+                        const SizedBox(height: 18),
+                        const Text(
+                          'نتیجه تحلیل شخصیت شما',
+                          style: TextStyle(fontSize: 16, color: Colors.white70, fontWeight: FontWeight.bold),
+                        ),
+                        const SizedBox(height: 8),
+                        ShaderMask(
+                          shaderCallback: (bounds) => const LinearGradient(
+                            colors: [Color(0xFFFF8E53), Color(0xFFFF6B4A)],
+                          ).createShader(bounds),
+                          child: Text(
+                            _calculatedType,
+                            style: const TextStyle(
+                              fontSize: 44,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: 4,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        Text(
+                          details['title']!,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white),
+                        ),
+                        const SizedBox(height: 16),
+                        Container(
+                          height: 1.5,
+                          width: double.infinity,
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [Colors.transparent, primaryColor.withOpacity(0.5), Colors.transparent],
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 18),
+                        Text(
+                          details['desc']!,
+                          textAlign: TextAlign.justify,
+                          style: const TextStyle(fontSize: 15, height: 1.8, color: Color(0xFFE0E0E0)),
+                        ),
+                      ],
                     ),
                   ),
-                  const SizedBox(height: 8),
-                  Text(
-                    details['title']!,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 17,
-                      fontWeight: FontWeight.bold,
+                  const SizedBox(height: 24),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 52,
+                    child: ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: primaryColor,
+                        foregroundColor: Colors.white,
+                        elevation: 6,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                      ),
+                      onPressed: _resetQuiz,
+                      icon: const Icon(Icons.refresh_rounded),
+                      label: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold) != null
+                          ? const Text('آزمون مجدد', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold))
+                          : const SizedBox(),
                     ),
-                    textAlign: TextAlign.center,
-                  ),
-                  Divider(color: Colors.white.withOpacity(0.15), height: [
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFFF6B4A).withOpacity(0.15),
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(Icons.stars_rounded, color: Color(0xFFFF6B4A), size: 54),
-                  ),
-                  const SizedBox(height: 14),
-                  const Text(
-                    'نتیجه ارزیابی شخصیت شما',
-                    style: TextStyle(color: Colors.white70, fontSize: 14),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    _calculatedType,
-                    style: const TextStyle(
-                      color: Color(0xFFFF6B4A),
-                      fontSize: 36,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 3,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    details['title']!,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 17,
-                      fontWeight: FontWeight.bold,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                  Divider(color: Colors.white.withOpacity(0.15), height: 32),
-                  Text(
-                    details['desc']!,
-                    style: const TextStyle(
-                      color: Colors.white70,
-                      fontSize: 14.5,
-                      height: 1.85,
-                    ),
-                    textAlign: TextAlign.justify,
                   ),
                 ],
               ),
             ),
-            const SizedBox(height: 24),
-            SizedBox(
-              width: double.infinity,
-              height: 50,
-              child: ElevatedButton.icon(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFFF6B4A),
-                  elevation: 4,
-                  shadowColor: const Color(0xFFFF6B4A).withOpacity(0.4),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                ),
-                onPressed:(0xFFFF6B4A).withOpacity(0.15),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Text(
-                      '$answeredCount از ۳۲ پاسخ داده شده',
-                      style: const TextStyle(color: Color(0xFFFF6B4A), fontSize: 12, fontWeight: FontWeight.bold),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 10),
-              ClipRRect(
-                borderRadius: BorderRadius.circular(6),
-                child: LinearProgressIndicator(
-                  value: progress,
-                  minHeight: 7,
-                  backgroundColor: Colors.white12,
-                  valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFFFF6B4A)),
-                ),
-              ),
-            ],
           ),
         ),
-        Expanded(
-          child: ListView.builder(
-            physics: const BouncingScrollPhysics(),
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-            itemCount: questions.length,
-            itemBuilder: (context, index) {
-              final q = questions[index];
-              final currentAns = _answers[index];
-              final isAnswered = currentAns != null;
+      );
+    }
 
-              return Container(
-                margin: const EdgeInsets.only(bottom: 12),
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFF183848), Color(0xFF112834)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(
-                    color: isAnswered ? const Color(0xFFFF6B4A).withOpacity(0.6) : Colors.white.withOpacity(0.07),
-                    width: 1.2,
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.2),
-                      blurRadius: 6,
-                      offset: const Offset(0, 3),
+    return Directionality(
+      textDirection: TextDirection.rtl,
+      child: Column(
+        children: [
+          // بخش هدر پیشرفت پاسخ‌دهی
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+            decoration: const BoxDecoration(
+              color: darkCardColor,
+              borderRadius: BorderRadius.only(
+                bottomLeft: Radius.circular(20),
+                bottomRight: Radius.circular(20),
+              ),
+              boxShadow: [
+                BoxShadow(color: Colors.black26, blurRadius: 10, offset: Offset(0, 4)),
+              ],
+            ),
+            child: Column(
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: const [
+                        Icon(Icons.quiz_rounded, color: primaryColor, size: 22),
+                        SizedBox(width: 8),
+                        Text('آزمون شخصیت‌شناسی MBTI', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: Colors.white)),
+                      ],
+                    ),
+                    Text(
+                      '$answeredCount از ${questions.length}',
+                      style: const TextStyle(color: secondaryColor, fontWeight: FontWeight.w800, fontSize: 14),
                     ),
                   ],
                 ),
-                child: Padding(
-                  padding: const EdgeInsets.all(14),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        q.title,
-                        style: TextStyle(
-                          color: isAnswered ? Colors.white : Colors.white.withOpacity(0.85),
-                          fontSize: 13,
-                          fontWeight: FontWeight.bold,
-                          height: 1.3,
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      InkWell(
-                        onTap: () {
-                          setState(() {
-                            _answers[index] = q.typeA;
-                          });
-                        },
-                        borderRadius: BorderRadius.circular(10),
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 200),
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
-                          decoration: BoxDecoration(
-                            color: currentAns == q.typeA
-                                ? const Color(0xFFFF6B4A).withOpacity(0.18)
-                                : Colors.black.withOpacity(0.15),
-                            borderRadius: BorderRadius.circular(10),
-                            border: Border.all(
-                              color: currentAns == q.typeA
-                                  ? const Color(0xFFFF6B4A)
-                                  : Colors.white.withOpacity(0.1),
-                              width: 1.1,
-                            ),
-                          ),
-                          child: Row(
-                            children: [
-                              Icon(
-                                currentAns == q.typeA ? Icons.radio_button_checked : Icons.radio_button_off,
-                                color: currentAns == q.typeA ? const Color(0xFFFF6B4A) : Colors.white38,
-                                size: 19,
-                              ),
-                              const SizedBox(width: 10),
-                              Expanded(
-                                child: Text(
-                                  q.optA,
-                                  style: TextStyle(
-                                    color: currentAns == q.typeA ? Colors.white : Colors.white70,
-                                    fontSize: 13.5,
-                                    fontWeight: currentAns == q.typeA ? FontWeight.w600 : FontWeight.normal,
-                                    height: 1.3,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      InkWell(
-                        onTap: () {
-                          setState(() {
-                            _answers[index] = q.typeB;
-                          });
-                        },
-                        borderRadius: BorderRadius.circular(10),
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 200),
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
-                          decoration: BoxDecoration(
-                            color: currentAns == q.typeB
-                                ? const Color(0xFFFF6B4A).withOpacity(0.18)
-                                : Colors.black.withOpacity(0.15),
-                            borderRadius: BorderRadius.circular(10),
-                            border: Border.all(
-                              color: currentAns == q.typeB
-                                  ? const Color(0xFFFF6B4A)
-                                  : Colors.white.withOpacity(0.1),
-                              width: 1.1,
-                            ),
-                          ),
-                          child: Row(
-                            children: [
-                              Icon(
-                                currentAns == q.typeB ? Icons.radio_button_checked : Icons.radio_button_off,
-                                color: currentAns == q.typeB ? const Color(0xFFFF6B4A) : Colors.white38,
-                                size: 19,
-                              ),
-                              const SizedBox(width: 10),
-                              Expanded(
-                                child: Text(
-                                  q.optB,
-                                  style: TextStyle(
-                                    color: currentAns == q.typeB ? Colors.white : Colors.white70,
-                                    fontSize: 13.5,
-                                    fontWeight: currentAns == q.typeB ? FontWeight.w600 : FontWeight.normal,
-                                    height: 1.3,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ],
+                const SizedBox(height: 10),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: LinearProgressIndicator(
+                    value: progress,
+                    minHeight: 7,
+                    backgroundColor: Colors.white12,
+                    valueColor: const AlwaysStoppedAnimation<Color>(primaryColor),
                   ),
                 ),
-              );
-            },
+              ],
+            ),
           ),
-        ),
-        Container(
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            color: const Color(0xFF0F2633),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.25),
-                blurRadius: 10,
-                offset: const Offset(0, -3),
-              ),
-            ],
+
+          // لیست ۳۲ سوال با استایل مدرن
+          Expanded(
+            child: ListView.builder(
+              padding: const EdgeInsets.fromLTRB(14, 12, 14, 85),
+              itemCount: questions.length,
+              itemBuilder: (context, index) {
+                final q = questions[index];
+                final selectedAnswer = _answers[index];
+                final isAnswered = selectedAnswer != null;
+
+                return Card(
+                  elevation: isAnswered ? 4 : 1,
+                  margin: const EdgeInsets.symmetric(vertical: 8),
+                  color: isAnswered ? const Color(0xFF262E3B) : surfaceColor,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(18),
+                    side: BorderSide(
+                      color: isAnswered ? primaryColor.withOpacity(0.65) : Colors.white10,
+                      width: isAnswered ? 1.5 : 1.0,
+                    ),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(14),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            CircleAvatar(
+                              radius: 12,
+                              backgroundColor: isAnswered ? primaryColor : Colors.white24,
+                              child: Text(
+                                '${index + 1}',
+                                style: const TextStyle(fontSize: 12, color: Colors.white, fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                q.title,
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 14,
+                                  color: isAnswered ? Colors.white : Colors.white70,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        _buildOptionTile(
+                          text: q.optA,
+                          value: q.typeA,
+                          groupValue: selectedAnswer,
+                          onTap: () => setState(() => _answers[index] = q.typeA),
+                        ),
+                        const SizedBox(height: 8),
+                        _buildOptionTile(
+                          text: q.optB,
+                          value: q.typeB,
+                          groupValue: selectedAnswer,
+                          onTap: () => setState(() => _answers[index] = q.typeB),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
           ),
-          child: SizedBox(
-            width: double.infinity,
-            height: 48,
-            child: ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: answeredCount == 32 ? const Color(0xFFFF6B4A) : Colors.white.withOpacity(0.12),
-                elevation: answeredCount == 32 ? 4 : 0,
-                shadowColor: const Color(0xFFFF6B4A).withOpacity(0.4),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              ),
-              onPressed: answeredCount == 32 ? _calculateResult : null,
-              child: Text(
-                answeredCount == 32 ? 'مشاهده نتیجه تست' : 'پاسخ به همه‌‌ی سوالات (${32 - answeredCount} مانده)',
-                style: TextStyle(
-                  color: answeredCount == 32 ? Colors.white : Colors.white38,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 14.5,
+
+          // دکمه شناور پایین برای مشاهده نتیجه
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: const BoxDecoration(
+              color: darkCardColor,
+              boxShadow: [
+                BoxShadow(color: Colors.black45, blurRadius: 12, offset: Offset(0, -4)),
+              ],
+            ),
+            child: SizedBox(
+              width: double.infinity,
+              height: 48,
+              child: ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: answeredCount == questions.length ? primaryColor : Colors.grey.shade800,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  elevation: answeredCount == questions.length ? 5 : 0,
+                ),
+                onPressed: answeredCount == questions.length ? _calculateResult : null,
+                child: Text(
+                  answeredCount == questions.length
+                      ? 'مشاهده نتیجه تحلیل شخصیت'
+                      : 'پاسخ به سوالات (${questions.length - answeredCount} سوال مانده)',
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
                 ),
               ),
             ),
           ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildOptionTile({
+    required String text,
+    required String value,
+    required String? groupValue,
+    required VoidCallback onTap,
+  }) {
+    final bool isSelected = value == groupValue;
+    const primaryColor = Color(0xFFFF6B4A);
+
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          color: isSelected ? primaryColor.withOpacity(0.18) : Colors.black12,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isSelected ? primaryColor : Colors.white12,
+            width: isSelected ? 1.4 : 1.0,
+          ),
         ),
-      ],
+        child: Row(
+          children: [
+            Container(
+              width: 18,
+              height: 18,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(color: isSelected ? primaryColor : Colors.white38, width: 2),
+                color: isSelected ? primaryColor : Colors.transparent,
+              ),
+              child: isSelected ? const Icon(Icons.check, size: 12, color: Colors.white) : null,
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                text,
+                style: TextStyle(
+                  fontSize: 13.5,
+                  fontWeight: isSelected ? FontWeight.w700 : FontWeight.normal,
+                  color: isSelected ? Colors.white : Colors.white70,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
