@@ -2002,11 +2002,12 @@ class _AudioPlayerScreenState extends State<AudioPlayerScreen> {
   Duration _position = Duration.zero;
   bool _isPlaying = false;
 
-  @override
-  void initState() {
-    super.initState();
-    _initAudio();
-  }
+@override
+void initState() {
+  super.initState();
+  _player = AudioPlayer();
+  _initAudio();
+}
 
   Future<void> _initAudio() async {
     // تنظیمات فعال‌سازی پخش در پس‌زمینه اندروید
