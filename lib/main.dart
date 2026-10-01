@@ -928,23 +928,20 @@ String _getLocalFileName(
         await _manageCacheLimit();
       }
 
-      if (downloadDialogIsOpen && mounted) {
+      // حفظ سیستم ثبت فایل خوانده‌شده
+      await _markAsRead(item.id);
+
+      // به‌روزرسانی آیکون آماده‌بودن فایل برای استفادهٔ آفلاین
+      await _updateCachedFilesList();
+
+      if (!mounted) return;
+
+      if (downloadDialogIsOpen) {
         Navigator.of(context, rootNavigator: true).pop();
         downloadDialogIsOpen = false;
       }
 
-      if (isPdf) {
-        if (!mounted) return;
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => PdfViewerScreen(
-              filePath: filePath,
-              title: item.name,
-            ),
-          ),
-        );
-      } else {
+      if (isApk) {
         final lower = fileName.toLowerCase();
         String? mimeType;
         if (lower.endsWith('.apk')) {
@@ -952,103 +949,42 @@ String _getLocalFileName(
         } else if (lower.endsWith('.zip')) {
           mimeType = 'application/zip';
         }
-
-        final result = await OpenFilex.open(
-          filePath,
-          type: mimeType,
-        );
-
-        if (result.type != ResultType.done && mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('عدم موفقیت در باز کردن فایل: ${result.message}'),
-              backgroundColor: Colors.redAccent,
+        await OpenFilex.open(filePath, type: mimeType);
+      } else if (isPdf) {
+        await Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => PdfViewerScreen(
+              title: item.name,
+              filePath: filePath,
             ),
-          );
-        }
+          ),
+        );
+      } else {
+        await Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => AudioPlayerScreen(
+              title: item.name,
+              filePath: filePath,
+            ),
+          ),
+        );
       }
     } catch (e) {
-      if (downloadDialogIsOpen && mounted) {
+      if (!mounted) return;
+
+      if (downloadDialogIsOpen) {
         Navigator.of(context, rootNavigator: true).pop();
         downloadDialogIsOpen = false;
       }
 
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('خطا: ${e.toString().replaceAll("Exception: ", "")}'),
-            backgroundColor: Colors.redAccent,
-          ),
-        );
-      }
-    }
-  }
-    // حفظ سیستم ثبت فایل خوانده‌شده
-    await _markAsRead(item.id);
-
-    // به‌روزرسانی آیکون آماده‌بودن فایل برای استفادهٔ آفلاین
-    await _updateCachedFilesList();
-
-    if (!mounted) {
-      return;
-    }
-
-    if (downloadDialogIsOpen) {
-      Navigator.of(
-        context,
-        rootNavigator: true,
-      ).pop();
-
-      downloadDialogIsOpen = false;
-    }
-
-    if (isApk) {
-      await OpenFilex.open(filePath);
-    } else if (isPdf) {
-      await Navigator.of(context).push(
-        MaterialPageRoute(
-          builder: (_) => PdfViewerScreen(
-            title: item.name,
-            filePath: filePath,
-          ),
-        ),
-      );
-    } else {
-      await Navigator.of(context).push(
-        MaterialPageRoute(
-          builder: (_) => AudioPlayerScreen(
-            title: item.name,
-            filePath: filePath,
-          ),
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('خطا در بارگیری یا پخش: ${e.toString().replaceAll("Exception: ", "")}'),
+          backgroundColor: Colors.redAccent,
         ),
       );
     }
-  } catch (e) {
-    if (!mounted) {
-      return;
-    }
-
-    // جلوگیری از بسته‌شدن اشتباه صفحهٔ اصلی
-    if (downloadDialogIsOpen) {
-      Navigator.of(
-        context,
-        rootNavigator: true,
-      ).pop();
-
-      downloadDialogIsOpen = false;
-    }
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          'خطا در بارگیری یا پخش: $e',
-        ),
-        backgroundColor: Colors.redAccent,
-      ),
-    );
   }
-}
-
   // مورد ۱: قابلیت «روزیِ من» (انتخاب تصادفی یک صوت یا متن)
   void _openDailyBlessing() {
     // انتخاب فقط از بین فایل‌های صوتی (سخنرانی‌ها)
