@@ -2683,6 +2683,7 @@ class _MbtiQuizScreenState extends State<MbtiQuizScreen> {
                       ],
                     ),
                     child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
                         BoxShadow(
                           color: primaryColor.withOpacity(0.18),
