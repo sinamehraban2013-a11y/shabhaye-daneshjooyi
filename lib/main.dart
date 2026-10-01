@@ -620,85 +620,301 @@ class _HomeScreenState extends State<HomeScreen> {
     return [];
   }
   
-  Future<void> _downloadAndOpen(DriveItem item, {bool isApk = false, bool isPdf = false}) async {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (ctx) => WillPopScope(
-        onWillPop: () async => false,
-        child: const AlertDialog(
-          backgroundColor: Color(0xFF27293D),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              CircularProgressIndicator(color: Color(0xFFFF6B4A)),
-              SizedBox(height: 16),
-              Text(
-                'در حال دریافت فایل...\nلطفاً شکیبا باشید',
-                textAlign: TextAlign.center,
-                style: TextStyle(color: Colors.white, fontSize: 13),
+String _getLocalFileName(
+  DriveItem item, {
+  bool isPdf = false,
+  bool isApk = false,
+}) {
+  String fileName = item.name
+      .replaceAll(
+        RegExp(r'\.bin$', caseSensitive: false),
+        '',
+      )
+      .trim();
+
+  // جلوگیری از ایجاد مسیرهای نامعتبر در اندروید
+  fileName = fileName
+      .replaceAll(
+        RegExp(r'[\\/:*?"<>|]'),
+        '_',
+      )
+      .trim();
+
+  if (fileName.isEmpty) {
+    fileName = item.id;
+  }
+
+  final lowerName = fileName.toLowerCase();
+
+  if (isPdf && !lowerName.endsWith('.pdf')) {
+    fileName = '$fileName.pdf';
+  } else if (isApk && !lowerName.endsWith('.apk')) {
+    fileName = '$fileName.apk';
+  } else if (!isPdf &&
+      !isApk &&
+      !lowerName.endsWith('.mp3') &&
+      !lowerName.endsWith('.m4a') &&
+      !lowerName.endsWith('.wav') &&
+      !lowerName.endsWith('.aac') &&
+      !lowerName.endsWith('.ogg') &&
+      !lowerName.endsWith('.flac')) {
+    // برای شناسایی مطمئن‌تر فایل صوتی توسط پلیر
+    fileName = '$fileName.mp3';
+  }
+
+  return fileName;
+}
+
+Future<void> _downloadAndOpen(
+  DriveItem item, {
+  bool isApk = false,
+  bool isPdf = false,
+}) async {
+  bool downloadDialogIsOpen = true;
+
+  showDialog(
+    context: context,
+    barrierDismissible: false,
+    builder: (ctx) => WillPopScope(
+      onWillPop: () async => false,
+      child: const AlertDialog(
+        backgroundColor: Color(0xFF27293D),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            CircularProgressIndicator(
+              color: Color(0xFFFF6B4A),
+            ),
+            SizedBox(height: 16),
+            Text(
+              'در حال دریافت فایل...\nلطفاً شکیبا باشید',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 13,
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
+    ),
+  );
+
+  try {
+    final dir = await getTemporaryDirectory();
+
+    final fileName = _getLocalFileName(
+      item,
+      isPdf: isPdf,
+      isApk: isApk,
     );
 
-    try {
-      final dir = await getTemporaryDirectory();
-      String safeName = item.name.replaceAll(RegExp(r'\.bin$'), '');
-      if (isPdf && !safeName.toLowerCase().endsWith('.pdf')) {
-        safeName += '.pdf';
-      }
-      final filePath = '${dir.path}/$safeName';
-      final file = File(filePath);
+    final filePath = '${dir.path}/$fileName';
+    final file = File(filePath);
 
-    if (!await file.exists()) {
+    bool hasPrefix(
+      List<int> bytes,
+      List<int> prefix,
+    ) {
+      if (bytes.length < prefix.length) {
+        return false;
+      }
+
+      for (int i = 0; i < prefix.length; i++) {
+        if (bytes[i] != prefix[i]) {
+          return false;
+        }
+      }
+
+      return true;
+    }
+
+    bool looksLikeHtml(List<int> bytes) {
+      if (bytes.isEmpty) {
+        return false;
+      }
+
+      final text = utf8
+          .decode(
+            bytes,
+            allowMalformed: true,
+          )
+          .trimLeft()
+          .toLowerCase();
+
+      return text.startsWith('<!doctype html') ||
+          text.startsWith('<html') ||
+          text.contains('<title>google drive') ||
+          text.contains('google drive');
+    }
+
+    Future<List<int>> readFileSample() {
+      return file.openRead(0, 512).fold<List<int>>(
+        <int>[],
+        (buffer, chunk) {
+          buffer.addAll(chunk);
+          return buffer;
+        },
+      );
+    }
+
+    bool shouldDownload = !await file.exists();
+
+    if (!shouldDownload) {
+      final fileLength = await file.length();
+
+      if (fileLength == 0) {
+        shouldDownload = true;
+      } else {
+        // فایل‌های HTML قدیمی که ممکن است قبلاً به‌جای فایل اصلی ذخیره شده باشند
+        final cachedSample = await readFileSample();
+
+        if (looksLikeHtml(cachedSample)) {
+          shouldDownload = true;
+        }
+
+        // بررسی سربرگ PDF
+        if (isPdf &&
+            !hasPrefix(
+              cachedSample,
+              <int>[37, 80, 68, 70], // %PDF
+            )) {
+          shouldDownload = true;
+        }
+
+        // فایل APK باید یک ZIP معتبر باشد
+        if (isApk &&
+            !hasPrefix(
+              cachedSample,
+              <int>[80, 75], // PK
+            )) {
+          shouldDownload = true;
+        }
+      }
+    }
+
+    if (shouldDownload) {
       final downloadUrl =
-          'https://docs.google.com/uc?export=download&id=${item.id}';
-      final response = await http.get(Uri.parse(downloadUrl));
-      if (response.statusCode == 200) {
-        await file.writeAsBytes(response.bodyBytes);
-        await _manageCacheLimit(); // <--- ۱. پاکسازی فایل‌های مازاد سقف ۱۰ عدد
-      } else {
-        throw Exception('خطا در دریافت فایل (${response.statusCode})');
+          'https://drive.google.com/uc?export=download&id=${item.id}';
+
+      final response = await http
+          .get(Uri.parse(downloadUrl))
+          .timeout(
+            const Duration(seconds: 60),
+          );
+
+      if (response.statusCode != 200) {
+        throw Exception(
+          'خطا در دریافت فایل (${response.statusCode})',
+        );
       }
+
+      final bytes = response.bodyBytes;
+
+      if (bytes.isEmpty) {
+        throw Exception('فایل دریافتی خالی است');
+      }
+
+      final contentType =
+          response.headers['content-type']?.toLowerCase() ?? '';
+
+      if (contentType.contains('text/html') ||
+          looksLikeHtml(bytes)) {
+        throw Exception(
+          'گوگل‌درایو به‌جای فایل، صفحهٔ HTML ارسال کرده است',
+        );
+      }
+
+      if (isPdf &&
+          !hasPrefix(
+            bytes,
+            <int>[37, 80, 68, 70], // %PDF
+          )) {
+        throw Exception('فایل دریافتی PDF معتبر نیست');
+      }
+
+      if (isApk &&
+          !hasPrefix(
+            bytes,
+            <int>[80, 75], // PK
+          )) {
+        throw Exception('فایل دریافتی APK معتبر نیست');
+      }
+
+      await file.writeAsBytes(
+        bytes,
+        flush: true,
+      );
+
+      // حفظ قانون موجود: حداکثر ۱۰ فایل رسانه‌ای
+      await _manageCacheLimit();
     }
 
-    await _markAsRead(item.id); // <--- ۲. ثبت به عنوان خوانده‌شده
-    await _updateCachedFilesList(); // <--- ۳. بروزرسانی آیکون‌های آفلاین در صفحه
+    // حفظ سیستم ثبت فایل خوانده‌شده
+    await _markAsRead(item.id);
 
-    if (!mounted) return;
-    Navigator.pop(context); // بستن لودینگ
-      
-      if (isApk) {
-        await OpenFilex.open(filePath);
-      } else if (isPdf) {
-        Navigator.of(context).push(
-          MaterialPageRoute(
-            builder: (_) => PdfViewerScreen(title: item.name, filePath: filePath),
-          ),
-        );
-      } else {
-        // سخنرانی یا صوت
-        Navigator.of(context).push(
-          MaterialPageRoute(
-            builder: (_) => AudioPlayerScreen(title: item.name, filePath: filePath),
-          ),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        Navigator.of(context, rootNavigator: true).pop();
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('خطا در بارگیری یا پخش: $e'),
-            backgroundColor: Colors.redAccent,
-          ),
-        );
-      }
+    // به‌روزرسانی آیکون آماده‌بودن فایل برای استفادهٔ آفلاین
+    await _updateCachedFilesList();
+
+    if (!mounted) {
+      return;
     }
+
+    if (downloadDialogIsOpen) {
+      Navigator.of(
+        context,
+        rootNavigator: true,
+      ).pop();
+
+      downloadDialogIsOpen = false;
+    }
+
+    if (isApk) {
+      await OpenFilex.open(filePath);
+    } else if (isPdf) {
+      await Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => PdfViewerScreen(
+            title: item.name,
+            filePath: filePath,
+          ),
+        ),
+      );
+    } else {
+      await Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => AudioPlayerScreen(
+            title: item.name,
+            filePath: filePath,
+          ),
+        ),
+      );
+    }
+  } catch (e) {
+    if (!mounted) {
+      return;
+    }
+
+    // جلوگیری از بسته‌شدن اشتباه صفحهٔ اصلی
+    if (downloadDialogIsOpen) {
+      Navigator.of(
+        context,
+        rootNavigator: true,
+      ).pop();
+
+      downloadDialogIsOpen = false;
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          'خطا در بارگیری یا پخش: $e',
+        ),
+        backgroundColor: Colors.redAccent,
+      ),
+    );
   }
+}
 
   // مورد ۱: قابلیت «روزیِ من» (انتخاب تصادفی یک صوت یا متن)
   void _openDailyBlessing() {
@@ -979,7 +1195,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 _buildHelpItem(
                   number: '۴',
                   text:
-                      'فایل‌هایی را که می‌بینید و می‌شنوید با تیک سبز مشخص می‌شود و برای استفاده بدون اینترنت، ده فایل آخری که دانلود نموده‌اید در حافظه موجود بوده و با تیک خاکستری مشخص می‌باشند.',
+                      'فایل‌هایی را که می‌بینید و می‌شنوید با تیک سبز مشخص می‌شود و برای استفاده بدون اینترنت، ده فایل آخری که دانلود نموده‌اید در حافظه موجود بوده و با تیک سبز کم رنگ مشخص می‌باشند.',
                 ),
               ],
             ),
@@ -1542,12 +1758,13 @@ Widget build(BuildContext context) {
         final item = items[index];
         final bool isRead = _readItemIds.contains(item.id);
 
-        String checkName = item.name.replaceAll(RegExp(r'\.bin$'), '');
-        if (_selectedIndex == 0 && !checkName.toLowerCase().endsWith('.pdf')) {
-          checkName += '.pdf';
-        }
-        final bool isOfflineReady = _cachedFileNames.contains(checkName);
-
+        final bool isOfflineReady = _cachedFileNames.contains(
+          _getLocalFileName(
+            item,
+            isPdf: _selectedIndex == 0,
+            isApk: isProductTab,
+          ),
+        );
           return Card(
             margin: const EdgeInsets.only(bottom: 12),
             color: const Color(0xFF27293D),
