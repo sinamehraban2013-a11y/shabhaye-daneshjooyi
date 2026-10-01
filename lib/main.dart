@@ -1856,7 +1856,7 @@ Widget _buildTabBody() {
     case 2:
       return const MbtiQuizScreen();
     case 3:
-      return _buildItemList(_filterItems(_otherProducts), isProductTab: true);
+      return _buildItemList(_filterItems(_texts));
     default:
       return const SizedBox.shrink();
   }
@@ -2673,7 +2673,8 @@ class _MbtiQuizScreenState extends State<MbtiQuizScreen> {
                     padding: const EdgeInsets.all(24),
                     decoration: BoxDecoration(
                       color: surfaceColor,
-                      borderRadius: BorderRadius.circular(24), [
+                      borderRadius: BorderRadius.circular(24),
+                      boxShadow: [
                         BoxShadow(
                           color: primaryColor.withOpacity(0.18),
                           blurRadius: 28,
