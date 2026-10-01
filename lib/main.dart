@@ -1700,7 +1700,7 @@ Future<void> _openEitaaChannel(String appUrl, String webUrl) async {
       final savedList = prefs.getStringList('read_items') ?? [];
       if (mounted) {
         setState(() {
-          _readItemIds = savedList.toSet();
+          _readItemIds = savedList; // <-- اصلاح شد (بدون .toSet)
         });
       }
     } catch (_) {}
