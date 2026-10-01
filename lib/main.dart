@@ -918,7 +918,7 @@ Future<void> _downloadAndOpen(
           shouldDownload = true;
         }
 
-        // فایل APK باید یک ZIP معتبر باشد
+        // بررسی سربرگ ZIP/APK (هر دو ساختار PK دارند)
         if (isApk &&
             !hasPrefix(
               cachedSample,
@@ -970,12 +970,13 @@ Future<void> _downloadAndOpen(
         throw Exception('فایل دریافتی PDF معتبر نیست');
       }
 
+      // بررسی سربرگ ZIP/APK
       if (isApk &&
           !hasPrefix(
             bytes,
             <int>[80, 75], // PK
           )) {
-        throw Exception('فایل دریافتی APK معتبر نیست');
+        throw Exception('فایل دریافتی معتبر نیست');
       }
 
       await file.writeAsBytes(
@@ -983,9 +984,68 @@ Future<void> _downloadAndOpen(
         flush: true,
       );
 
-      // حفظ قانون موجود: حداکثر ۱۰ فایل رسانه‌ای
+      // حفظ قانون حداکثر فایل‌های کش
       await _manageCacheLimit();
     }
+
+    // بستن دیالوگ دانلود
+    if (downloadDialogIsOpen && mounted) {
+      Navigator.of(context, rootNavigator: true).pop();
+      downloadDialogIsOpen = false;
+    }
+
+    // باز کردن فایل بر اساس نوع آن
+    if (isPdf) {
+      if (!mounted) return;
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => PdfViewerScreen(
+            filePath: filePath,
+            title: item.name,
+          ),
+        ),
+      );
+    } else {
+      // برای APK، ZIP و سایر فایل‌ها
+      final lower = fileName.toLowerCase();
+      String? mimeType;
+      if (lower.endsWith('.apk')) {
+        mimeType = 'application/vnd.android.package-archive';
+      } else if (lower.endsWith('.zip')) {
+        mimeType = 'application/zip';
+      }
+
+      final result = await OpenFilex.open(
+        filePath,
+        type: mimeType,
+      );
+
+      if (result.type != ResultType.done && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('عدم موفقیت در باز کردن فایل: ${result.message}'),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+      }
+    }
+  } catch (e) {
+    if (downloadDialogIsOpen && mounted) {
+      Navigator.of(context, rootNavigator: true).pop();
+      downloadDialogIsOpen = false;
+    }
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('خطا: ${e.toString().replaceAll("Exception: ", "")}'),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+    }
+  }
+}
 
     // حفظ سیستم ثبت فایل خوانده‌شده
     await _markAsRead(item.id);
@@ -1894,21 +1954,41 @@ Widget build(BuildContext context) {
     );
   }
 
-  Widget _buildTabBody() {
-    switch (_selectedIndex) {
-      case 0:
-        return _buildItemList(_texts);
-      case 1:
-        return _buildItemList(_lectures);
-      case 2:
-        return const MbtiQuizScreen();
-      case 3:
-        return _buildItemList(_otherProducts, isProductTab: true);
-      default:
-        return _buildItemList(_texts);    
-    }
-  }
+// تابع کمکی برای نرمال‌سازی متن جهت جستجوی دقیق فارسی
+String _normalizeText(String input) {
+  return input
+      .replaceAll('ي', 'ی')
+      .replaceAll('ك', 'ک')
+      .replaceAll('\u200c', '') // حذف نیم‌فاصله
+      .replaceAll(' ', '')
+      .toLowerCase();
+}
 
+List<DriveItem> _filterItems(List<DriveItem> sourceList) {
+  if (_searchQuery.trim().isEmpty) {
+    return sourceList;
+  }
+  final query = _normalizeText(_searchQuery);
+  return sourceList.where((item) {
+    final title = _normalizeText(item.name);
+    return title.contains(query);
+  }).toList();
+}
+
+Widget _buildTabBody() {
+  switch (_selectedIndex) {
+    case 0:
+      return _buildItemList(_filterItems(_texts), isPdfTab: true);
+    case 1:
+      return _buildItemList(_filterItems(_lectures));
+    case 2:
+      return const MbtiQuizScreen();
+    case 3:
+      return _buildItemList(_filterItems(_otherProducts), isProductTab: true);
+    default:
+      return const SizedBox.shrink();
+  }
+}
   Widget _buildItemList(List<DriveItem> items, {bool isProductTab = false}) {
     if (items.isEmpty && !_isLoading) {
       return RefreshIndicator(
