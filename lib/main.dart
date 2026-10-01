@@ -1850,7 +1850,7 @@ List<DriveItem> _filterItems(List<DriveItem> sourceList) {
 Widget _buildTabBody() {
   switch (_selectedIndex) {
     case 0:
-      return _buildItemList(_filterItems(_texts), isPdfTab: true);
+      return _buildItemList(_filterItems(_texts));
     case 1:
       return _buildItemList(_filterItems(_lectures));
     case 2:
