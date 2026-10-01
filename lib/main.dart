@@ -2648,37 +2648,66 @@ class _MbtiQuizScreenState extends State<MbtiQuizScreen> {
             Container(
               padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
-                color: const Color(0xFF133B4F),
+                gradient: const LinearGradient(
+                  colors: [Color(0xFF1B3B4B), Color(0xFF132A36)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
                 borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: const Color(0xFFFF6B4A), width: 1.5),
+                border: Border.all(color: const Color(0xFFFF6B4A).withOpacity(0.8), width: 1.5),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.3),
+                    blurRadius: 15,
+                    offset: const Offset(0, 6),
+                  ),
+                ],
               ),
               child: Column(
                 children: [
-                  const Icon(Icons.stars_rounded, color: Color(0xFFFF6B4A), size: 60),
-                  const SizedBox(height: 12),
-                  const Text('نتیجه ارزیابی شخصیت شما',
-                      style: TextStyle(color: Colors.white70, fontSize: 14)),
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFF6B4A).withOpacity(0.15),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.stars_rounded, color: Color(0xFFFF6B4A), size, fontSize: 14),
+                  ),
                   const SizedBox(height: 6),
                   Text(
                     _calculatedType,
                     style: const TextStyle(
-                        color: Color(0xFFFF6B4A),
-                        fontSize: 34,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 2),
+                      color: Color(0xFFFF6B4A),
+                      fontSize: 36, fontSize: 14),
                   ),
                   const SizedBox(height: 6),
                   Text(
+                    _calculatedType,
+                    style: const TextStyle(
+                      color: Color(0xFFFF6B4A),
+                      fontSize: 36,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 3,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
                     details['title']!,
                     style: const TextStyle(
-                        color: Colors.white, fontSize: 17, fontWeight: FontWeight.bold),
+                      color: Colors.white,
+                      fontSize: 17,
+                      fontWeight: FontWeight.bold,
+                    ),
                     textAlign: TextAlign.center,
                   ),
-                  const Divider(color: Colors.white24, height: 28),
+                  Divider(color: Colors.white.withOpacity(0.15), height: 32),
                   Text(
                     details['desc']!,
                     style: const TextStyle(
-                        color: Colors.white70, fontSize: 14.5, height: 1.8),
+                      color: Colors.white70,
+                      fontSize: 14.5,
+                      height: 1.85,
+                    ),
                     textAlign: TextAlign.justify,
                   ),
                 ],
@@ -2687,16 +2716,20 @@ class _MbtiQuizScreenState extends State<MbtiQuizScreen> {
             const SizedBox(height: 24),
             SizedBox(
               width: double.infinity,
-              height: 48,
+              height: 50,
               child: ElevatedButton.icon(
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFFFF6B4A),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  elevation: 4,
+                  shadowColor: const Color(0xFFFF6B4A).withOpacity(0.4),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 ),
                 onPressed: _resetQuiz,
                 icon: const Icon(Icons.refresh_rounded, color: Colors.white),
-                label: const Text('آزمون مجدد',
-                    style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold)),
+                label: const Text(
+                  'آزمون مجدد',
+                  style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold),
+                ),
               ),
             ),
           ],
@@ -2710,8 +2743,11 @@ class _MbtiQuizScreenState extends State<MbtiQuizScreen> {
     return Column(
       children: [
         Container(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-          color: const Color(0xFF0F3244),
+          padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+          decoration: BoxDecoration(
+            color: const Color(0xFF0F2633),
+            border: Border(bottom: BorderSide(color: Colors.white.withOpacity(0.08))),
+          ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -2722,20 +2758,27 @@ class _MbtiQuizScreenState extends State<MbtiQuizScreen> {
                     'آزمون خودارزیابی MBTI (نسخه فارسی)',
                     style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
                   ),
-                  Text(
-                    '$answeredCount از ۳۲ پاسخ داده شده',
-                    style: const TextStyle(color: Color(0xFFFF6B4A), fontSize: 12.5),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFF6B4A).withOpacity(0.15),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      '$answeredCount از ۳۲ پاسخ داده شده',
+                      style: const TextStyle(color: Color(0xFFFF6B4A), fontSize: 12, fontWeight: FontWeight.bold),
+                    ),
                   ),
                 ],
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 10),
               ClipRRect(
                 borderRadius: BorderRadius.circular(6),
                 child: LinearProgressIndicator(
                   value: progress,
                   minHeight: 7,
                   backgroundColor: Colors.white12,
-                  color: const Color(0xFFFF6B4A),
+                  valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFFFF6B4A)),
                 ),
               ),
             ],
@@ -2743,46 +2786,70 @@ class _MbtiQuizScreenState extends State<MbtiQuizScreen> {
         ),
         Expanded(
           child: ListView.builder(
-            padding: const EdgeInsets.all(12),
+            physics: const BouncingScrollPhysics(),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
             itemCount: questions.length,
             itemBuilder: (context, index) {
               final q = questions[index];
               final currentAns = _answers[index];
+              final isAnswered = currentAns != null;
 
-              return Card(
-                color: const Color(0xFF133B4F),
+              return Container(
                 margin: const EdgeInsets.only(bottom: 12),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  side: BorderSide(
-                    color: currentAns != null ? const Color(0xFFFF6B4A).withOpacity(0.5) : Colors.transparent,
-                    width: 1,
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFF183848), Color(0xFF112834)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
                   ),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(
+                    color: isAnswered ? const Color(0xFFFF6B4A).withOpacity(0.6) : Colors.white.withOpacity(0.07),
+                    width: 1.2,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.2),
+                      blurRadius: 6,
+                      offset: const Offset(0, 3),
+                    ),
+                  ],
                 ),
                 child: Padding(
-                  padding: const EdgeInsets.all(12),
+                  padding: const EdgeInsets.all(14),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
                         q.title,
-                        style: const TextStyle(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.bold),
+                        style: TextStyle(
+                          color: isAnswered ? Colors.white : Colors.white.withOpacity(0.85),
+                          fontSize: 13,
+                          fontWeight: FontWeight.bold,
+                          height: 1.3,
+                        ),
                       ),
-                      const SizedBox(height: 10),
+                      const SizedBox(height: 12),
                       InkWell(
                         onTap: () {
                           setState(() {
                             _answers[index] = q.typeA;
                           });
                         },
-                        borderRadius: BorderRadius.circular(8),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+                        borderRadius: BorderRadius.circular(10),
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 200),
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
                           decoration: BoxDecoration(
-                            color: currentAns == q.typeA ? const Color(0xFFFF6B4A).withOpacity(0.2) : Colors.black12,
-                            borderRadius: BorderRadius.circular(8),
+                            color: currentAns == q.typeA
+                                ? const Color(0xFFFF6B4A).withOpacity(0.18)
+                                : Colors.black.withOpacity(0.15),
+                            borderRadius: BorderRadius.circular(10),
                             border: Border.all(
-                              color: currentAns == q.typeA ? const Color(0xFFFF6B4A) : Colors.white10,
+                              color: currentAns == q.typeA
+                                  ? const Color(0xFFFF6B4A)
+                                  : Colors.white.withOpacity(0.1),
+                              width: 1.1,
                             ),
                           ),
                           child: Row(
@@ -2790,15 +2857,17 @@ class _MbtiQuizScreenState extends State<MbtiQuizScreen> {
                               Icon(
                                 currentAns == q.typeA ? Icons.radio_button_checked : Icons.radio_button_off,
                                 color: currentAns == q.typeA ? const Color(0xFFFF6B4A) : Colors.white38,
-                                size: 18,
+                                size: 19,
                               ),
-                              const SizedBox(width: 8),
+                              const SizedBox(width: 10),
                               Expanded(
                                 child: Text(
                                   q.optA,
                                   style: TextStyle(
                                     color: currentAns == q.typeA ? Colors.white : Colors.white70,
                                     fontSize: 13.5,
+                                    fontWeight: currentAns == q.typeA ? FontWeight.w600 : FontWeight.normal,
+                                    height: 1.3,
                                   ),
                                 ),
                               ),
@@ -2813,14 +2882,20 @@ class _MbtiQuizScreenState extends State<MbtiQuizScreen> {
                             _answers[index] = q.typeB;
                           });
                         },
-                        borderRadius: BorderRadius.circular(8),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+                        borderRadius: BorderRadius.circular(10),
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 200),
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
                           decoration: BoxDecoration(
-                            color: currentAns == q.typeB ? const Color(0xFFFF6B4A).withOpacity(0.2) : Colors.black12,
-                            borderRadius: BorderRadius.circular(8),
+                            color: currentAns == q.typeB
+                                ? const Color(0xFFFF6B4A).withOpacity(0.18)
+                                : Colors.black.withOpacity(0.15),
+                            borderRadius: BorderRadius.circular(10),
                             border: Border.all(
-                              color: currentAns == q.typeB ? const Color(0xFFFF6B4A) : Colors.white10,
+                              color: currentAns == q.typeB
+                                  ? const Color(0xFFFF6B4A)
+                                  : Colors.white.withOpacity(0.1),
+                              width: 1.1,
                             ),
                           ),
                           child: Row(
@@ -2828,15 +2903,17 @@ class _MbtiQuizScreenState extends State<MbtiQuizScreen> {
                               Icon(
                                 currentAns == q.typeB ? Icons.radio_button_checked : Icons.radio_button_off,
                                 color: currentAns == q.typeB ? const Color(0xFFFF6B4A) : Colors.white38,
-                                size: 18,
+                                size: 19,
                               ),
-                              const SizedBox(width: 8),
+                              const SizedBox(width: 10),
                               Expanded(
                                 child: Text(
                                   q.optB,
                                   style: TextStyle(
                                     color: currentAns == q.typeB ? Colors.white : Colors.white70,
                                     fontSize: 13.5,
+                                    fontWeight: currentAns == q.typeB ? FontWeight.w600 : FontWeight.normal,
+                                    height: 1.3,
                                   ),
                                 ),
                               ),
@@ -2852,20 +2929,35 @@ class _MbtiQuizScreenState extends State<MbtiQuizScreen> {
           ),
         ),
         Container(
-          padding: const EdgeInsets.all(12),
-          color: const Color(0xFF0F3244),
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: const Color(0xFF0F2633),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.25),
+                blurRadius: 10,
+                offset: const Offset(0, -3),
+              ),
+            ],
+          ),
           child: SizedBox(
             width: double.infinity,
-            height: 46,
+            height: 48,
             child: ElevatedButton(
               style: ElevatedButton.styleFrom(
-                backgroundColor: answeredCount == 32 ? const Color(0xFFFF6B4A) : Colors.grey.shade700,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                backgroundColor: answeredCount == 32 ? const Color(0xFFFF6B4A) : Colors.white.withOpacity(0.12),
+                elevation: answeredCount == 32 ? 4 : 0,
+                shadowColor: const Color(0xFFFF6B4A).withOpacity(0.4),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               ),
               onPressed: answeredCount == 32 ? _calculateResult : null,
               child: Text(
                 answeredCount == 32 ? 'مشاهده نتیجه تیپ شخصیتی' : 'پاسخ به همه سوالات (${32 - answeredCount} مانده)',
-                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+                style: TextStyle(
+                  color: answeredCount == 32 ? Colors.white : Colors.white38,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 14.5,
+                ),
               ),
             ),
           ),
