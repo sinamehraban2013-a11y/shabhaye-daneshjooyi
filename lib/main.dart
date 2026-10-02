@@ -742,13 +742,59 @@ class _HomeScreenState extends State<HomeScreen> {
       });
     }
   }
+  String _normalizeSortKey(String raw) {
+    var s = raw.toLowerCase()
+        .replaceAll('ي', 'ی')
+        .replaceAll('ك', 'ک')
+        .replaceAll('\u200c', ' ')
+        .trim();
+    // حذف پسوندهای رایج صوتی، متنی و گوگل‌درایو تا نام فایل‌ها یکسان مقایسه شوند
+    s = s.replaceFirst(RegExp(r'\.(pdf|bin|apk|zip|mp3|m4a|wav|aac|ogg|flac)$', caseSensitive: false), '');
+    return s.trim();
+  }
+
+  // مرتب‌سازی طبیعی (Natural Sort) برای قرار گرفتن درست اعداد (مثلاً ۲ قبل از ۱۰)
+  List<DriveItem> _sortDriveItems(List<DriveItem> items) {
+    int compareNatural(String a, String b) {
+      final reg = RegExp(r'(\d+|[^\d]+)');
+      final matchesA = reg.allMatches(a).map((m) => m.group(0)!).toList();
+      final matchesB = reg.allMatches(b).map((m) => m.group(0)!).toList();
+
+      for (int i = 0; i < matchesA.length && i < matchesB.length; i++) {
+        final partA = matchesA[i];
+        final partB = matchesB[i];
+
+        final numA = int.tryParse(partA);
+        final numB = int.tryParse(partB);
+
+        if (numA != null && numB != null) {
+          final cmp = numA.compareTo(numB);
+          if (cmp != 0) return cmp;
+        } else {
+          final cmp = partA.compareTo(partB);
+          if (cmp != 0) return cmp;
+        }
+      }
+      return matchesA.length.compareTo(matchesB.length);
+    }
+
+    items.sort((a, b) => compareNatural(
+          _normalizeSortKey(a.name),
+          _normalizeSortKey(b.name),
+        ));
+    return items;
+  }
+
   Future<List<DriveItem>> _fetchFolder(String folderId) async {
     final url = '$scriptApiUrl?folderId=$folderId';
     try {
-      final response = await http.get(Uri.parse(url)).timeout(const Duration(seconds: 15));
+      final response =
+          await http.get(Uri.parse(url)).timeout(const Duration(seconds: 15));
       if (response.statusCode == 200) {
         final List<dynamic> data = jsonDecode(response.body);
-        return data.map((json) => DriveItem.fromJson(json)).toList();
+        final items = data.map((json) => DriveItem.fromJson(json)).toList();
+        // اعمال مرتب‌سازی هوشمند روی همه تب‌ها (متون، سخنرانی‌ها و محصولات)
+        return _sortDriveItems(items);
       }
     } catch (e) {
       debugPrint('Error fetching folder: $e');
@@ -1632,6 +1678,37 @@ void _showFeedbackDialog() {
     );
   }
 
+  // دریافت هاله رنگی پس‌زمینه متناسب با تب فعال
+  LinearGradient _getTabBackgroundGradient() {
+    switch (_selectedIndex) {
+      case 0: // متون: تم زمردی / فیروزه‌ای عمیق
+        return const LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [Color(0xFF0F2B2B), Color(0xFF1E1E2E), Color(0xFF161622)],
+        );
+      case 1: // سخنرانی‌ها: تم کهربایی / صوتی گرم
+        return const LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [Color(0xFF2C2214), Color(0xFF1E1E2E), Color(0xFF161622)],
+        );
+      case 2: // تست شخصیت: تم ارغوانی / روانشناسی
+        return const LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [Color(0xFF271731), Color(0xFF1E1E2E), Color(0xFF161622)],
+        );
+      case 3: // سایر محصولات: تم آبی متالیک / نرم‌افزاری
+      default:
+        return const LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [Color(0xFF13253A), Color(0xFF1E1E2E), Color(0xFF161622)],
+        );
+    }
+  }
+
   // تابع ساخت کارت‌های زیبای منو با طراحی اختصاصی
   Widget _buildMenuSheetItem({
     required IconData icon,
@@ -1963,9 +2040,20 @@ Widget build(BuildContext context) {
           ),
         ],
       ),
-        body: Stack(
-          children: [
-            // محتوای اصلی صفحه
+      body: Stack(
+        children: [
+          // پس‌زمینه پویا با انیمیشن ملایم بین تب‌ها
+          Positioned.fill(
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 400),
+              curve: Curves.easeInOut,
+              decoration: BoxDecoration(
+                gradient: _getTabBackgroundGradient(),
+              ),
+            ),
+          ),
+
+          // محتوای اصلی صفحه
             Column(
               children: [
                 const QuoteMarquee(), // نوار پیمایش افقی جملات
