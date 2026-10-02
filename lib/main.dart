@@ -1098,51 +1098,90 @@ Future<void> _downloadAndOpen(
           throw Exception('فایل دریافتی خالی است');
         }
 
-        // بررسی پاسخ HTML گوگل‌درایو
-        if (contentType.contains('text/html') ||
-            looksLikeHtml(sampleBytes)) {
+        // بررسی پاسخ HTML گوگل‌درایو و دور زدن هوشمند تاییدیه ویروس گوگل
+        if (contentType.contains('text/html') || looksLikeHtml(sampleBytes)) {
           if (await partialFile.exists()) {
             await partialFile.delete();
           }
 
-          if (mounted &&
-              downloadDialogIsOpen &&
-              Navigator.of(
-                context,
-                rootNavigator: true,
-              ).canPop()) {
-            Navigator.of(
-              context,
-              rootNavigator: true,
-            ).pop();
+          // تلاش برای استخراج توکن تایید گوگل از داخل صفحه HTML
+          final htmlContent = utf8.decode(sampleBytes, allowMalformed: true);
+          final confirmMatch = RegExp(r'confirm=([0-9A-Za-z_-]+)').firstMatch(htmlContent) ??
+              RegExp(r'name="confirm"\s+value="([^"]+)"').firstMatch(htmlContent);
+          final uuidMatch = RegExp(r'uuid=([0-9A-Za-z_-]+)').firstMatch(htmlContent) ??
+              RegExp(r'name="uuid"\s+value="([^"]+)"').firstMatch(htmlContent);
 
-            downloadDialogIsOpen = false;
-          }
-
-          if (await canLaunchUrl(downloadUri)) {
-            await launchUrl(
-              downloadUri,
-              mode: LaunchMode.externalApplication,
+          if (confirmMatch != null) {
+            final confirmToken = confirmMatch.group(1);
+            final uuidToken = uuidMatch?.group(1);
+            final directUri = Uri.parse(
+              'https://drive.usercontent.google.com/download?id=${item.id}&export=download&confirm=$confirmToken' +
+                  (uuidToken != null ? '&uuid=$uuidToken' : ''),
             );
 
-            if (mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text(
-                    'به دلیل حجم بالای فایل و تأیید گوگل، '
-                    'دانلود در مرورگر آغاز شد.',
-                  ),
-                  backgroundColor: Colors.blue,
-                ),
-              );
+            final cookies = response.headers['set-cookie'];
+            final retryRequest = http.Request('GET', directUri);
+            if (cookies != null && cookies.isNotEmpty) {
+              retryRequest.headers['Cookie'] = cookies;
             }
 
-            return;
+            final retryResponse = await client.send(retryRequest).timeout(
+              const Duration(seconds: 90),
+            );
+
+            if (retryResponse.statusCode == 200) {
+              final retryContentType = retryResponse.headers['content-type']?.toLowerCase() ?? '';
+              if (!retryContentType.contains('text/html')) {
+                totalBytes = retryResponse.contentLength ?? 0;
+                sampleBytes.clear();
+                receivedBytes = 0;
+                fileSink = partialFile.openWrite();
+
+                await for (final chunk in retryResponse.stream) {
+                  fileSink.add(chunk);
+                  receivedBytes += chunk.length;
+                  if (sampleBytes.length < 4096) {
+                    final needed = 4096 - sampleBytes.length;
+                    sampleBytes.addAll(
+                      chunk.length <= needed ? chunk : chunk.sublist(0, needed),
+                    );
+                  }
+                  final now = DateTime.now();
+                  if (now.difference(lastDialogUpdate).inMilliseconds > 60) {
+                    lastDialogUpdate = now;
+                    updateDialog();
+                  }
+                }
+                await fileSink.flush();
+                await fileSink.close();
+              }
+            }
           }
 
-          throw Exception(
-            'گوگل‌درایو به‌جای فایل، صفحهٔ HTML ارسال کرده است',
-          );
+          // اگر پس از تلاش، همچنان فایل دریافت نشد، مستقیماً به مرورگر ارسال کن (بدون canLaunchUrl معیوب)
+          if (!await partialFile.exists() || (await partialFile.length()) == 0 || looksLikeHtml(sampleBytes)) {
+            if (mounted &&
+                downloadDialogIsOpen &&
+                Navigator.of(context, rootNavigator: true).canPop()) {
+              Navigator.of(context, rootNavigator: true).pop();
+              downloadDialogIsOpen = false;
+            }
+
+            try {
+              await launchUrl(downloadUri, mode: LaunchMode.externalApplication);
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('به دلیل قوانین امنیتی درایو، دانلود در مرورگر آغاز شد.'),
+                    backgroundColor: Colors.blue,
+                  ),
+                );
+              }
+              return;
+            } catch (_) {
+              throw Exception('تأییدیه گوگل‌درایو دریافت نشد و مرورگر باز نشد.');
+            }
+          }
         }
 
         // بررسی معتبر بودن PDF
