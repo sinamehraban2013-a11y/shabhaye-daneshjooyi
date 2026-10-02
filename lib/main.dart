@@ -2504,7 +2504,7 @@ class _AudioPlayerScreenState extends State<AudioPlayerScreen> {
           const SizedBox(height: 16),
           Row(mainAxisAlignment: MainAxisAlignment.spaceEvenly, children: [
             ValueListenableBuilder<double>(valueListenable: _audio.speed, builder: (context, speed, _) => TextButton(style: TextButton.styleFrom(backgroundColor: Colors.white.withOpacity(.08), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
-              onPressed: () { const speeds = [1.0, 1.25, 1.5, 1.75, 2.0]; final i = speeds.indexOf(speed); _audio.setSpeed(speeds[(i + 1) % speeds.length]); }, child: Text('${speed}x', style: const TextStyle(color: Color(0xFFFF6B4A), fontWeight: FontWeight.bold)))),
+              onPressed: () { const speeds = [0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0]; final i = speeds.indexOf(speed); _audio.setSpeed(speeds[(i + 1) % speeds.length]); }, child: Text('${speed}x', style: const TextStyle(color: Color(0xFFFF6B4A), fontWeight: FontWeight.bold)))),
             IconButton(iconSize: 32, icon: const Icon(Icons.replay_10_rounded, color: Colors.white), onPressed: () { final t = _audio.position.value - const Duration(seconds: 10); _audio.seek(t < Duration.zero ? Duration.zero : t); }),
             ValueListenableBuilder<PlayerState>(valueListenable: _audio.playerState, builder: (context, state, _) => IconButton(iconSize: 64, padding: EdgeInsets.zero, icon: Icon(state == PlayerState.playing ? Icons.pause_circle_filled_rounded : Icons.play_circle_filled_rounded, color: const Color(0xFFFF6B4A)), onPressed: _audio.togglePlayPause)),
             IconButton(iconSize: 32, icon: const Icon(Icons.forward_10_rounded, color: Colors.white), onPressed: () { final t = _audio.position.value + const Duration(seconds: 10); final d = _audio.duration.value; _audio.seek(d > Duration.zero && t > d ? d : t); }),
@@ -2538,7 +2538,8 @@ class PdfViewerScreen extends StatefulWidget {
 class _PdfViewerScreenState extends State<PdfViewerScreen> {
   late PdfViewerController _pdfViewerController;
   PdfTextSearchResult _searchResult = PdfTextSearchResult();
-  
+
+  bool _isNightMode = false;
   bool _isSearchOpen = false;
   final TextEditingController _searchController = TextEditingController();
   
@@ -2665,6 +2666,20 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
               },
             ),
             IconButton(
+              icon: Icon(
+                _isNightMode ? Icons.dark_mode : Icons.light_mode,
+                color: _isNightMode ? Colors.amber : Colors.white,
+              ),
+              tooltip: _isNightMode ? 'حالت روز' : 'حالت شب',
+              onPressed: () {
+                setState(() {
+                  _isNightMode = !_isNightMode;
+                });
+              },
+            ),
+
+            // دکمه تغییر جهت چرخش/ورق‌زدن صفحات (کد قبلی شما)
+            IconButton(
               icon: Icon(_isHorizontal ? Icons.swap_vert : Icons.swap_horiz),
               tooltip: _isHorizontal ? 'تغییر به اسکرول عمودی' : 'تغییر به ورق‌زدن افقی',
               onPressed: () {
@@ -2678,27 +2693,38 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
       ),
       body: Stack(
         children: [
-          // نمایشگر اصلی PDF
-          SfPdfViewer.file(
-            File(widget.filePath),
-            controller: _pdfViewerController,
-            enableTextSelection: true, // امکان های‌لایت و کپی متن
-            pageLayoutMode: _isHorizontal
-                ? PdfPageLayoutMode.single
-                : PdfPageLayoutMode.continuous,
-            scrollDirection: _isHorizontal
-                ? PdfScrollDirection.horizontal
-                : PdfScrollDirection.vertical,
-            onDocumentLoaded: (PdfDocumentLoadedDetails details) {
-              setState(() {
-                _pageCount = details.document.pages.count;
-              });
-            },
-            onPageChanged: (PdfPageChangedDetails details) {
-              setState(() {
-                _currentPage = details.newPageNumber;
-              });
-            },
+          // نمایشگر اصلی PDF با پشتیبانی از حالت شب
+          ColorFiltered(
+            colorFilter: _isNightMode
+                ? const ColorFilter.matrix([
+                    -1.0, 0, 0, 0, 255, // معکوس‌سازی رنگ قرمز
+                    0, -1.0, 0, 0, 255, // معکوس‌سازی رنگ سبز
+                    0, 0, -1.0, 0, 255, // معکوس‌سازی رنگ آبی
+                    0, 0, 0, 1.0, 0,    // حفظ شفافیت (Alpha)
+                  ])
+                : const ColorFilter.mode(Colors.transparent, BlendMode.multiply),
+            child: SfPdfViewer.file(
+              File(widget.filePath),
+              controller: _pdfViewerController,
+              maxZoomLevel: 5.0,
+              enableTextSelection: true, // امکان های‌لایت و کپی متن
+              pageLayoutMode: _isHorizontal
+                  ? PdfPageLayoutMode.single
+                  : PdfPageLayoutMode.continuous,
+              scrollDirection: _isHorizontal
+                  ? PdfScrollDirection.horizontal
+                  : PdfScrollDirection.vertical,
+              onDocumentLoaded: (PdfDocumentLoadedDetails details) {
+                setState(() {
+                  _pageCount = details.document.pages.count;
+                });
+              },
+              onPageChanged: (PdfPageChangedDetails details) {
+                setState(() {
+                  _currentPage = details.newPageNumber;
+                });
+              },
+            ),
           ),
 
           // نوار ابزار شیشه‌ای و مدرن در پایین صفحه
@@ -2729,7 +2755,7 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
                       tooltip: 'کوچک‌نمایی',
                       onPressed: () {
                         _pdfViewerController.zoomLevel =
-                            (_pdfViewerController.zoomLevel - 0.25).clamp(1.0, 3.0);
+                            (_pdfViewerController.zoomLevel - 0.25).clamp(1.0, 5.0);
                       },
                     ),
 
@@ -2762,7 +2788,7 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
                       tooltip: 'بزرگ‌نمایی',
                       onPressed: () {
                         _pdfViewerController.zoomLevel =
-                            (_pdfViewerController.zoomLevel + 0.25).clamp(1.0, 3.0);
+                            (_pdfViewerController.zoomLevel + 0.25).clamp(1.0, 5.0);
                       },
                     ),
                   ],
