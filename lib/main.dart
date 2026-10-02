@@ -802,32 +802,67 @@ class _HomeScreenState extends State<HomeScreen> {
     return [];
   }
   
+// ==========================================
+// کلاس کمکی در بالاترین سطح فایل (Top-level)
+// ==========================================
+class _StreamDownloadResult {
+  final int totalBytes;
+  final List<int> sampleBytes;
+  final String? cookies;
+  final String? finalContentType;
+
+  const _StreamDownloadResult({
+    required this.totalBytes,
+    required this.sampleBytes,
+    this.cookies,
+    this.finalContentType,
+  });
+}
+
+// ==========================================
+// توابع و متدهای داخل _HomeScreenState
+// ==========================================
+
 String _getLocalFileName(
   DriveItem item, {
   bool isPdf = false,
   bool isApk = false,
 }) {
-  // حذف پسوند .bin که گوگل درایو گاهی اضافه می‌کند
+  // ۱. حذف پسوند .bin که گاهی سرور درایو می‌چسباند
   String fileName = item.name
       .replaceAll(RegExp(r'\.bin$', caseSensitive: false), '')
       .trim();
 
-  // پاکسازی کاراکترهای غیرمجاز ویندوز/اندروید برای نام فایل
-  fileName = fileName.replaceAll(RegExp(r'[\\/:*?"<>|]'), '_');
+  // ۲. جلوگیری از ایجاد مسیرهای نامعتبر با کاراکترهای غیرمجاز
+  fileName = fileName.replaceAll(RegExp(r'[\\/:*?"<>|]'), '_').trim();
 
-  final lower = fileName.toLowerCase();
+  if (fileName.isEmpty) {
+    fileName = item.id;
+  }
 
-  // اگر فایل خودش پسوند استاندارد دارد، دست نزن
-  if (lower.endsWith('.zip') || lower.endsWith('.apk') || lower.endsWith('.pdf')) {
+  final lowerName = fileName.toLowerCase();
+
+  // اگر فایل پسوند استاندارد فشرده یا نصبی دارد، دست نزن
+  if (lowerName.endsWith('.zip') || lowerName.endsWith('.apk') || lowerName.endsWith('.pdf')) {
     return fileName;
   }
 
-  // اگر پسوند نداشت، بر اساس نوع تب پسوند بده
-  if (isApk) return '$fileName.apk';
-  if (isPdf) return '$fileName.pdf';
+  if (isPdf && !lowerName.endsWith('.pdf')) {
+    fileName = '$fileName.pdf';
+  } else if (isApk && !lowerName.endsWith('.apk')) {
+    fileName = '$fileName.apk';
+  } else if (!isPdf && !isApk &&
+      !lowerName.endsWith('.mp3') &&
+      !lowerName.endsWith('.m4a') &&
+      !lowerName.endsWith('.wav') &&
+      !lowerName.endsWith('.aac') &&
+      !lowerName.endsWith('.ogg') &&
+      !lowerName.endsWith('.flac')) {
+    // پیش‌فرض مطمئن برای پخش صوت
+    fileName = '$fileName.mp3';
+  }
 
-  // پیش‌فرض برای صوت
-  return '$fileName.mp3';
+  return fileName;
 }
 
 Future<void> _downloadAndOpen(
@@ -841,9 +876,10 @@ Future<void> _downloadAndOpen(
   int receivedBytes = 0;
   int totalBytes = 0;
 
-  // برای آپدیت دیالوگ
+  // متغیر استیت دیالوگ جهت رندر مجدد درصد دانلود
   StateSetter? updateDialogState;
 
+  // نمایش پنجره پیشرفت مدرن
   showDialog<void>(
     context: context,
     barrierDismissible: false,
@@ -855,12 +891,17 @@ Future<void> _downloadAndOpen(
 
           String progressText;
           if (totalBytes > 0) {
-            final percent = (progressValue * 100).clamp(0.0, 100.0).toStringAsFixed(0);
-            final receivedMB = (receivedBytes / (1024 * 1024)).toStringAsFixed(1);
-            final totalMB = (totalBytes / (1024 * 1024)).toStringAsFixed(1);
+            final percent = (progressValue * 100)
+                .clamp(0.0, 100.0)
+                .toStringAsFixed(0);
+            final receivedMB =
+                (receivedBytes / (1024 * 1024)).toStringAsFixed(1);
+            final totalMB =
+                (totalBytes / (1024 * 1024)).toStringAsFixed(1);
             progressText = '$percent٪  ــ  $receivedMB از $totalMB مگابایت';
           } else if (receivedBytes > 0) {
-            final receivedMB = (receivedBytes / (1024 * 1024)).toStringAsFixed(1);
+            final receivedMB =
+                (receivedBytes / (1024 * 1024)).toStringAsFixed(1);
             progressText = 'دریافت‌شده: $receivedMB مگابایت';
           } else {
             progressText = 'در حال اتصال به سرور...';
@@ -890,7 +931,9 @@ Future<void> _downloadAndOpen(
                     value: totalBytes > 0 ? progressValue : null,
                     minHeight: 10,
                     backgroundColor: Colors.white12,
-                    valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFFFF6B4A)),
+                    valueColor: const AlwaysStoppedAnimation<Color>(
+                      Color(0xFFFF6B4A),
+                    ),
                   ),
                 ),
                 const SizedBox(height: 14),
@@ -899,14 +942,20 @@ Future<void> _downloadAndOpen(
                   child: Text(
                     progressText,
                     textAlign: TextAlign.center,
-                    style: const TextStyle(color: Colors.white70, fontSize: 12),
+                    style: const TextStyle(
+                      color: Colors.white70,
+                      fontSize: 12,
+                    ),
                   ),
                 ),
                 const SizedBox(height: 8),
                 const Text(
                   'لطفاً شکیبا باشید',
                   textAlign: TextAlign.center,
-                  style: TextStyle(color: Colors.white54, fontSize: 11),
+                  style: TextStyle(
+                    color: Colors.white54,
+                    fontSize: 11,
+                  ),
                 ),
               ],
             ),
@@ -916,150 +965,50 @@ Future<void> _downloadAndOpen(
     ),
   );
 
-  bool hasPrefix(List<int> bytes, List<int> prefix) {
-    if (bytes.length < prefix.length) return false;
-    for (int i = 0; i < prefix.length; i++) {
-      if (bytes[i] != prefix[i]) return false;
-    }
-    return true;
-  }
-
-  bool looksLikeHtml(List<int> bytes) {
-    if (bytes.isEmpty) return false;
-    final text = utf8.decode(bytes, allowMalformed: true).trimLeft().toLowerCase();
-
-    return text.startsWith('<!doctype html') ||
-        text.startsWith('<html') ||
-        text.contains('<title>google drive') ||
-        text.contains('google drive');
-  }
-
-  Future<List<int>> _readFileSample(File f) {
-    return f.openRead(0, 512).fold<List<int>>(<int>[], (buffer, chunk) {
-      buffer.addAll(chunk);
-      return buffer;
-    });
-  }
-
-  // دانلود استریم و ذخیره در partial با برداشت نمونه اولیه برای تشخیص HTML/هدر
-  Future<_StreamDownloadResult> _streamDownloadToPartial({
-    required http.Client client,
-    required Uri uri,
-    required File partialFile,
-    Map<String, String>? headers,
-  }) async {
-    final request = http.Request('GET', uri);
-    if (headers != null && headers.isNotEmpty) {
-      request.headers.addAll(headers);
-    }
-
-    final response = await client.send(request).timeout(const Duration(seconds: 90));
-
-    if (response.statusCode != 200) {
-      throw Exception('خطا در دریافت فایل (${response.statusCode})');
-    }
-
-    final contentType = response.headers['content-type']?.toLowerCase() ?? '';
-    final contentLength = response.contentLength ?? 0;
-
-    // برای تشخیص HTML و هدرها، چند کیلوبایت اول را نگه می‌داریم
-    final sampleBytes = <int>[];
-
-    IOSink? sink;
-    try {
-      if (await partialFile.exists()) {
-        await partialFile.delete();
-      }
-      sink = partialFile.openWrite();
-
-      receivedBytes = 0;
-      totalBytes = contentLength;
-      progressValue = 0.0;
-
-      updateDialogState?.call(() {});
-
-      DateTime lastUpdate = DateTime.now();
-
-      await for (final chunk in response.stream.timeout(const Duration(seconds: 90))) {
-        sink.add(chunk);
-        receivedBytes += chunk.length;
-
-        if (sampleBytes.length < 4096) {
-          final remaining = 4096 - sampleBytes.length;
-          if (chunk.length <= remaining) {
-            sampleBytes.addAll(chunk);
-          } else {
-            sampleBytes.addAll(chunk.sublist(0, remaining));
-          }
-        }
-
-        if (totalBytes > 0) {
-          progressValue = (receivedBytes / totalBytes).clamp(0.0, 1.0);
-        }
-
-        final now = DateTime.now();
-        if (now.difference(lastUpdate).inMilliseconds >= 60 ||
-            (totalBytes > 0 && receivedBytes >= totalBytes)) {
-          updateDialogState?.call(() {});
-          lastUpdate = now;
-        }
-      }
-
-      await sink.flush();
-    } finally {
-      await sink?.close();
-    }
-
-    if (totalBytes > 0) {
-      progressValue = 1.0;
-    }
-    updateDialogState?.call(() {});
-
-    if (!await partialFile.exists() || (await partialFile.length()) == 0) {
-      throw Exception('فایل دریافتی خالی است');
-    }
-
-    return _StreamDownloadResult(
-      contentType: contentType,
-      sampleBytes: sampleBytes,
-      // فقط برای مرحله confirm لازم می‌شود (کوکی‌ها)
-      setCookie: response.headers['set-cookie'],
-    );
-  }
-
-  Future<Uri?> _extractConfirmUriFromHtml({
-    required List<int> htmlSampleBytes,
-    required String fileId,
-  }) async {
-    final html = utf8.decode(htmlSampleBytes, allowMalformed: true);
-
-    final confirmMatch = RegExp(r'confirm=([0-9A-Za-z_-]+)').firstMatch(html) ??
-        RegExp(r'name="confirm"\s+value="([^"]+)"').firstMatch(html);
-
-    final uuidMatch = RegExp(r'uuid=([0-9A-Za-z_-]+)').firstMatch(html) ??
-        RegExp(r'name="uuid"\s+value="([^"]+)"').firstMatch(html);
-
-    if (confirmMatch == null) return null;
-
-    final confirmToken = confirmMatch.group(1);
-    final uuidToken = uuidMatch?.group(1);
-
-    // endpoint رایج‌تر برای دانلود مستقیم بعد از confirm
-    final uri = Uri.parse(
-      'https://drive.usercontent.google.com/download'
-      '?id=$fileId&export=download&confirm=$confirmToken'
-      '${uuidToken != null ? '&uuid=$uuidToken' : ''}',
-    );
-    return uri;
-  }
-
   try {
     final dir = await getTemporaryDirectory();
 
-    final fileName = _getLocalFileName(item, isPdf: isPdf, isApk: isApk);
+    final fileName = _getLocalFileName(
+      item,
+      isPdf: isPdf,
+      isApk: isApk,
+    );
+
     final filePath = '${dir.path}/$fileName';
     final file = File(filePath);
 
+    // توابع کمکی اعتبارسنجی
+    bool hasPrefix(List<int> bytes, List<int> prefix) {
+      if (bytes.length < prefix.length) return false;
+      for (int i = 0; i < prefix.length; i++) {
+        if (bytes[i] != prefix[i]) return false;
+      }
+      return true;
+    }
+
+    bool looksLikeHtml(List<int> bytes) {
+      if (bytes.isEmpty) return false;
+      final text = utf8
+          .decode(bytes, allowMalformed: true)
+          .trimLeft()
+          .toLowerCase();
+      return text.startsWith('<!doctype html') ||
+          text.startsWith('<html') ||
+          text.contains('<title>google drive') ||
+          text.contains('google drive');
+    }
+
+    Future<List<int>> readFileSample(File targetFile) {
+      return targetFile.openRead(0, 512).fold<List<int>>(
+        <int>[],
+        (buffer, chunk) {
+          buffer.addAll(chunk);
+          return buffer;
+        },
+      );
+    }
+
+    // بررسی وجود فایل در حافظه موقت (کش)
     bool shouldDownload = !await file.exists();
 
     if (!shouldDownload) {
@@ -1067,112 +1016,212 @@ Future<void> _downloadAndOpen(
       if (fileLength == 0) {
         shouldDownload = true;
       } else {
-        final cachedSample = await _readFileSample(file);
-
+        final cachedSample = await readFileSample(file);
         if (looksLikeHtml(cachedSample)) {
           shouldDownload = true;
-        } else if (isPdf && !hasPrefix(cachedSample, <int>[37, 80, 68, 70])) {
+        } else if (isPdf &&
+            !hasPrefix(cachedSample, <int>[37, 80, 68, 70])) {
           shouldDownload = true;
-        } else if (isApk && !hasPrefix(cachedSample, <int>[80, 75])) {
+        } else if (isApk &&
+            !hasPrefix(cachedSample, <int>[80, 75])) {
           shouldDownload = true;
         }
       }
     }
 
     if (shouldDownload) {
-      // مرحله ۱: تلاش مستقیم
       final downloadUri = Uri.parse(
         'https://docs.google.com/uc?export=download&id=${item.id}&confirm=t',
       );
 
       final client = http.Client();
-      final partialFile = File('$filePath.part');
 
       try {
-        final first = await _streamDownloadToPartial(
-          client: client,
-          uri: downloadUri,
-          partialFile: partialFile,
-        );
+        final partialFile = File('$filePath.part');
+        if (await partialFile.exists()) {
+          await partialFile.delete();
+        }
 
-        // اگر HTML بود، مرحله ۲: استخراج confirm و دانلود مجدد با کوکی
-        if (first.contentType.contains('text/html') || looksLikeHtml(first.sampleBytes)) {
-          // فایل partial از مرحله قبل HTML است؛ پاکش می‌کنیم
-          if (await partialFile.exists()) {
-            await partialFile.delete();
+        Future<_StreamDownloadResult> streamDownloadToPartial(
+          Uri uri, {
+          String? cookieHeader,
+        }) async {
+          final request = http.Request('GET', uri);
+          if (cookieHeader != null && cookieHeader.isNotEmpty) {
+            request.headers['Cookie'] = cookieHeader;
           }
 
-          final confirmUri = await _extractConfirmUriFromHtml(
-            htmlSampleBytes: first.sampleBytes,
-            fileId: item.id,
+          final response = await client.send(request).timeout(
+            const Duration(seconds: 90),
           );
 
-          if (confirmUri != null) {
-            final headers = <String, String>{};
-            if (first.setCookie != null && first.setCookie!.isNotEmpty) {
-              headers['Cookie'] = first.setCookie!;
+          if (response.statusCode != 200) {
+            throw Exception('خطا در دریافت فایل (${response.statusCode})');
+          }
+
+          totalBytes = response.contentLength ?? 0;
+          final finalContentType =
+              response.headers['content-type']?.toLowerCase();
+          final cookies = response.headers['set-cookie'];
+
+          updateDialogState?.call(() {});
+
+          final sampleBytes = <int>[];
+          IOSink? fileSink = partialFile.openWrite();
+
+          try {
+            DateTime lastDialogUpdate = DateTime.now();
+
+            await for (final chunk in response.stream.timeout(
+              const Duration(seconds: 90),
+            )) {
+              fileSink.add(chunk);
+              receivedBytes += chunk.length;
+
+              if (sampleBytes.length < 4096) {
+                final remaining = 4096 - sampleBytes.length;
+                sampleBytes.addAll(chunk.take(remaining));
+              }
+
+              if (totalBytes > 0) {
+                progressValue =
+                    (receivedBytes / totalBytes).clamp(0.0, 1.0);
+              }
+
+              final now = DateTime.now();
+              if (now.difference(lastDialogUpdate).inMilliseconds >= 60 ||
+                  (totalBytes > 0 && receivedBytes >= totalBytes)) {
+                updateDialogState?.call(() {});
+                lastDialogUpdate = now;
+              }
             }
 
-            final second = await _streamDownloadToPartial(
-              client: client,
-              uri: confirmUri,
-              partialFile: partialFile,
-              headers: headers,
+            await fileSink.flush();
+          } finally {
+            await fileSink.close();
+          }
+
+          if (totalBytes > 0) {
+            progressValue = 1.0;
+          }
+          updateDialogState?.call(() {});
+
+          return _StreamDownloadResult(
+            totalBytes: totalBytes,
+            sampleBytes: sampleBytes,
+            cookies: cookies,
+            finalContentType: finalContentType,
+          );
+        }
+
+        // اجرای استریم اولیه
+        var downloadResult = await streamDownloadToPartial(downloadUri);
+        var sampleBytes = downloadResult.sampleBytes;
+        var finalContentType = downloadResult.finalContentType ?? '';
+
+        if (sampleBytes.isEmpty) {
+          if (await partialFile.exists()) await partialFile.delete();
+          throw Exception('فایل دریافتی خالی است');
+        }
+
+        // اگر گوگل‌درایو صفحه تأییدیه ویروس داده باشد:
+        if (finalContentType.contains('text/html') || looksLikeHtml(sampleBytes)) {
+          final htmlContent = utf8.decode(sampleBytes, allowMalformed: true);
+          final confirmMatch =
+              RegExp(r'confirm=([0-9A-Za-z_-]+)').firstMatch(htmlContent) ??
+                  RegExp(r'name="confirm"\s+value="([^"]+)"')
+                      .firstMatch(htmlContent);
+          final uuidMatch =
+              RegExp(r'uuid=([0-9A-Za-z_-]+)').firstMatch(htmlContent) ??
+                  RegExp(r'name="uuid"\s+value="([^"]+)"')
+                      .firstMatch(htmlContent);
+
+          if (confirmMatch != null) {
+            final confirmToken = confirmMatch.group(1);
+            final uuidToken = uuidMatch?.group(1);
+
+            final directUri = Uri.parse(
+              'https://drive.usercontent.google.com/download?id=${item.id}&export=download&confirm=$confirmToken' +
+                  (uuidToken != null ? '&uuid=$uuidToken' : ''),
             );
 
-            // اگر باز HTML شد، یعنی باز هم تأییدیه دور زده نشد
-            if (second.contentType.contains('text/html') || looksLikeHtml(second.sampleBytes)) {
-              if (await partialFile.exists()) {
-                await partialFile.delete();
-              }
-              await _fallbackToBrowser(downloadUri);
-              return;
+            if (await partialFile.exists()) {
+              await partialFile.delete();
             }
 
-            // نمونه معتبر را برای ادامه validation نگه می‌داریم
-            // (second.sampleBytes همین الآن در partial موجود است)
-            // اعتبارسنجی در پایین انجام می‌شود با second.sampleBytes
-            if (isPdf && !hasPrefix(second.sampleBytes, <int>[37, 80, 68, 70])) {
-              if (await partialFile.exists()) await partialFile.delete();
-              throw Exception('فایل دریافتی PDF معتبر نیست');
-            }
-            if (isApk && !hasPrefix(second.sampleBytes, <int>[80, 75])) {
-              if (await partialFile.exists()) await partialFile.delete();
-              throw Exception('فایل دریافتی معتبر نیست');
-            }
-          } else {
-            // token پیدا نشد => مرورگر
-            await _fallbackToBrowser(downloadUri);
-            return;
+            receivedBytes = 0;
+            progressValue = 0.0;
+
+            downloadResult = await streamDownloadToPartial(
+              directUri,
+              cookieHeader: downloadResult.cookies,
+            );
+            sampleBytes = downloadResult.sampleBytes;
+            finalContentType = downloadResult.finalContentType ?? '';
           }
-        } else {
-          // حالت غیر HTML: اعتبارسنجی با نمونه مرحله اول
-          if (isPdf && !hasPrefix(first.sampleBytes, <int>[37, 80, 68, 70])) {
-            if (await partialFile.exists()) await partialFile.delete();
-            throw Exception('فایل دریافتی PDF معتبر نیست');
-          }
-          if (isApk && !hasPrefix(first.sampleBytes, <int>[80, 75])) {
-            if (await partialFile.exists()) await partialFile.delete();
-            throw Exception('فایل دریافتی معتبر نیست');
+
+          // اگر با توکن مستقیم هم دور زده نشد، به مرورگر می‌فرستد
+          if (!await partialFile.exists() ||
+              (await partialFile.length()) == 0 ||
+              looksLikeHtml(sampleBytes)) {
+            if (mounted &&
+                downloadDialogIsOpen &&
+                Navigator.of(context, rootNavigator: true).canPop()) {
+              Navigator.of(context, rootNavigator: true).pop();
+              downloadDialogIsOpen = false;
+            }
+
+            try {
+              await launchUrl(
+                downloadUri,
+                mode: LaunchMode.externalApplication,
+              );
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text(
+                      'به دلیل قوانین امنیتی گوگل‌درایو، دانلود در مرورگر آغاز شد.',
+                    ),
+                    backgroundColor: Colors.blue,
+                  ),
+                );
+              }
+              return;
+            } catch (_) {
+              throw Exception('تأییدیه گوگل‌درایو دریافت نشد و مرورگر باز نشد.');
+            }
           }
         }
 
-        // انتقال فایل کامل به نام اصلی
+        // بررسی معتبر بودن PDF (%PDF)
+        if (isPdf && !hasPrefix(sampleBytes, <int>[37, 80, 68, 70])) {
+          if (await partialFile.exists()) await partialFile.delete();
+          throw Exception('فایل دریافتی PDF معتبر نیست');
+        }
+
+        // بررسی معتبر بودن بسته‌های نصبی و فشرده (امضای PK برای APK و ZIP)
+        if (isApk && !hasPrefix(sampleBytes, <int>[80, 75])) {
+          if (await partialFile.exists()) await partialFile.delete();
+          throw Exception('فایل دریافتی بسته معتبر نیست');
+        }
+
+        // جایگزینی تمیز فایل کامل روی فایل نهایی
         if (await file.exists()) {
           await file.delete();
         }
         await partialFile.rename(filePath);
 
+        // مدیریت حجم کش برنامه
         await _manageCacheLimit();
       } finally {
         client.close();
       }
     }
 
-    // حفظ سیستم ثبت فایل خوانده‌شده
+    // ثبت فایل در سابقه مطالعه
     await _markAsRead(item.id);
 
-    // به‌روزرسانی فهرست فایل‌های کش‌شده
+    // به‌روزرسانی لیست آیتم‌های آفلاین
     await _updateCachedFilesList();
 
     if (!mounted) return;
@@ -1182,26 +1231,37 @@ Future<void> _downloadAndOpen(
       downloadDialogIsOpen = false;
     }
 
+    // باز کردن فایل بر اساس نوع آن
     if (isApk) {
       final lower = fileName.toLowerCase();
       String? mimeType;
+
       if (lower.endsWith('.apk')) {
         mimeType = 'application/vnd.android.package-archive';
       } else if (lower.endsWith('.zip')) {
         mimeType = 'application/zip';
       }
 
-      await OpenFilex.open(filePath, type: mimeType);
+      await OpenFilex.open(
+        filePath,
+        type: mimeType,
+      );
     } else if (isPdf) {
       await Navigator.of(context).push(
         MaterialPageRoute(
-          builder: (_) => PdfViewerScreen(title: item.name, filePath: filePath),
+          builder: (_) => PdfViewerScreen(
+            title: item.name,
+            filePath: filePath,
+          ),
         ),
       );
     } else {
       await Navigator.of(context).push(
         MaterialPageRoute(
-          builder: (_) => AudioPlayerScreen(title: item.name, filePath: filePath),
+          builder: (_) => AudioPlayerScreen(
+            title: item.name,
+            filePath: filePath,
+          ),
         ),
       );
     }
@@ -1217,46 +1277,13 @@ Future<void> _downloadAndOpen(
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
-          'خطا در بارگیری یا پخش: ${e.toString().replaceAll("Exception: ", "")}',
+          'خطا در بارگیری یا پخش: '
+          '${e.toString().replaceAll("Exception: ", "")}',
         ),
         backgroundColor: Colors.redAccent,
       ),
     );
   }
-}
-
-Future<void> _fallbackToBrowser(Uri downloadUri) async {
-  if (mounted &&
-      Navigator.of(context, rootNavigator: true).canPop()) {
-    Navigator.of(context, rootNavigator: true).pop();
-  }
-
-  try {
-    await launchUrl(downloadUri, mode: LaunchMode.externalApplication);
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('به دلیل قوانین امنیتی درایو، دانلود در مرورگر آغاز شد.'),
-          backgroundColor: Colors.blue,
-        ),
-      );
-    }
-  } catch (_) {
-    throw Exception('تأییدیه گوگل‌درایو دریافت نشد و مرورگر باز نشد.');
-  }
-}
-
-/// مدل داخلی برای نتیجه دانلود استریم
-class _StreamDownloadResult {
-  final String contentType;
-  final List<int> sampleBytes;
-  final String? setCookie;
-
-  _StreamDownloadResult({
-    required this.contentType,
-    required this.sampleBytes,
-    required this.setCookie,
-  });
 }
   
   // مورد ۱: قابلیت «روزیِ من» (انتخاب تصادفی یک صوت یا متن)
