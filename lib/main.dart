@@ -789,30 +789,105 @@ Future<void> _downloadAndOpen(
 }) async {
   bool downloadDialogIsOpen = true;
 
-  showDialog(
+  double progressValue = 0.0;
+  int receivedBytes = 0;
+  int totalBytes = 0;
+
+  StateSetter? updateDialogState;
+
+  showDialog<void>(
     context: context,
     barrierDismissible: false,
-    builder: (ctx) => WillPopScope(
+    builder: (dialogContext) => WillPopScope(
       onWillPop: () async => false,
-      child: const AlertDialog(
-        backgroundColor: Color(0xFF27293D),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            CircularProgressIndicator(
-              color: Color(0xFFFF6B4A),
+      child: StatefulBuilder(
+        builder: (context, setDialogState) {
+          updateDialogState = setDialogState;
+
+          String progressText;
+
+          if (totalBytes > 0) {
+            final percent = (progressValue * 100)
+                .clamp(0.0, 100.0)
+                .toStringAsFixed(0);
+
+            final receivedMB =
+                (receivedBytes / (1024 * 1024)).toStringAsFixed(1);
+
+            final totalMB =
+                (totalBytes / (1024 * 1024)).toStringAsFixed(1);
+
+            progressText =
+                '$percent٪  ــ  $receivedMB از $totalMB مگابایت';
+          } else if (receivedBytes > 0) {
+            final receivedMB =
+                (receivedBytes / (1024 * 1024)).toStringAsFixed(1);
+
+            progressText = 'دریافت‌شده: $receivedMB مگابایت';
+          } else {
+            progressText = 'در حال اتصال به سرور...';
+          }
+
+          return AlertDialog(
+            backgroundColor: const Color(0xFF27293D),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
             ),
-            SizedBox(height: 16),
-            Text(
-              'در حال دریافت فایل...\nلطفاً شکیبا باشید',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 13,
-              ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  'در حال دریافت فایل',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 15,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+
+                const SizedBox(height: 18),
+
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: LinearProgressIndicator(
+                    value: totalBytes > 0 ? progressValue : null,
+                    minHeight: 10,
+                    backgroundColor: Colors.white12,
+                    valueColor: const AlwaysStoppedAnimation<Color>(
+                      Color(0xFFFF6B4A),
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 14),
+
+                Directionality(
+                  textDirection: TextDirection.rtl,
+                  child: Text(
+                    progressText,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      color: Colors.white70,
+                      fontSize: 12,
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 8),
+
+                const Text(
+                  'لطفاً شکیبا باشید',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: Colors.white54,
+                    fontSize: 11,
+                  ),
+                ),
+              ],
             ),
-          ],
-        ),
+          );
+        },
       ),
     ),
   );
@@ -831,15 +906,24 @@ Future<void> _downloadAndOpen(
 
     bool hasPrefix(List<int> bytes, List<int> prefix) {
       if (bytes.length < prefix.length) return false;
+
       for (int i = 0; i < prefix.length; i++) {
-        if (bytes[i] != prefix[i]) return false;
+        if (bytes[i] != prefix[i]) {
+          return false;
+        }
       }
+
       return true;
     }
 
     bool looksLikeHtml(List<int> bytes) {
       if (bytes.isEmpty) return false;
-      final text = utf8.decode(bytes, allowMalformed: true).trimLeft().toLowerCase();
+
+      final text = utf8
+          .decode(bytes, allowMalformed: true)
+          .trimLeft()
+          .toLowerCase();
+
       return text.startsWith('<!doctype html') ||
           text.startsWith('<html') ||
           text.contains('<title>google drive') ||
@@ -860,15 +944,19 @@ Future<void> _downloadAndOpen(
 
     if (!shouldDownload) {
       final fileLength = await file.length();
+
       if (fileLength == 0) {
         shouldDownload = true;
       } else {
         final cachedSample = await readFileSample();
+
         if (looksLikeHtml(cachedSample)) {
           shouldDownload = true;
-        } else if (isPdf && !hasPrefix(cachedSample, <int>[37, 80, 68, 70])) {
+        } else if (isPdf &&
+            !hasPrefix(cachedSample, <int>[37, 80, 68, 70])) {
           shouldDownload = true;
-        } else if (isApk && !hasPrefix(cachedSample, <int>[80, 75])) {
+        } else if (isApk &&
+            !hasPrefix(cachedSample, <int>[80, 75])) {
           shouldDownload = true;
         }
       }
@@ -879,75 +967,210 @@ Future<void> _downloadAndOpen(
         'https://docs.google.com/uc?export=download&id=${item.id}&confirm=t',
       );
 
-      final response = await http.get(downloadUri).timeout(
-        const Duration(seconds: 90),
-      );
+      final client = http.Client();
 
-      if (response.statusCode != 200) {
-        throw Exception('خطا در دریافت فایل (${response.statusCode})');
-      }
+      try {
+        final request = http.Request('GET', downloadUri);
 
-      final bytes = response.bodyBytes;
-      if (bytes.isEmpty) {
-        throw Exception('فایل دریافتی خالی است');
-      }
+        final response = await client.send(request).timeout(
+          const Duration(seconds: 90),
+        );
 
-      final contentType = response.headers['content-type']?.toLowerCase() ?? '';
-      if (contentType.contains('text/html') || looksLikeHtml(bytes)) {
-        if (mounted && downloadDialogIsOpen && Navigator.of(context, rootNavigator: true).canPop()) {
-          Navigator.of(context, rootNavigator: true).pop();
-          downloadDialogIsOpen = false;
+        if (response.statusCode != 200) {
+          throw Exception(
+            'خطا در دریافت فایل (${response.statusCode})',
+          );
         }
 
-        if (await canLaunchUrl(downloadUri)) {
-          await launchUrl(downloadUri, mode: LaunchMode.externalApplication);
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('به دلیل حجم بالای فایل و تأیید گوگل، دانلود در مرورگر آغاز شد.'),
-                backgroundColor: Colors.blue,
-              ),
-            );
+        totalBytes = response.contentLength ?? 0;
+
+        final contentType =
+            response.headers['content-type']?.toLowerCase() ?? '';
+
+        updateDialogState?.call(() {});
+
+        final partialFile = File('$filePath.part');
+
+        if (await partialFile.exists()) {
+          await partialFile.delete();
+        }
+
+        final sampleBytes = <int>[];
+        final fileSink = partialFile.openWrite();
+
+        try {
+          DateTime lastUpdate = DateTime.now();
+
+          await for (final chunk in response.stream.timeout(
+            const Duration(seconds: 90),
+          )) {
+            fileSink.add(chunk);
+
+            receivedBytes += chunk.length;
+
+            // فقط چند کیلوبایت ابتدایی برای تشخیص HTML ذخیره می‌شود
+            if (sampleBytes.length < 4096) {
+              final remaining = 4096 - sampleBytes.length;
+              sampleBytes.addAll(
+                chunk.take(remaining),
+              );
+            }
+
+            if (totalBytes > 0) {
+              progressValue = (receivedBytes / totalBytes)
+                  .clamp(0.0, 1.0);
+            }
+
+            // جلوگیری از بازسازی بیش از حد دیالوگ
+            final now = DateTime.now();
+
+            if (now.difference(lastUpdate).inMilliseconds >= 60 ||
+                (totalBytes > 0 &&
+                    receivedBytes >= totalBytes)) {
+              updateDialogState?.call(() {});
+              lastUpdate = now;
+            }
           }
-          return;
+
+          await fileSink.flush();
+        } finally {
+          await fileSink.close();
         }
-        throw Exception('گوگل‌درایو به‌جای فایل، صفحهٔ HTML ارسال کرده است');
-      }
 
-      if (isPdf && !hasPrefix(bytes, <int>[37, 80, 68, 70])) {
-        throw Exception('فایل دریافتی PDF معتبر نیست');
-      }
+        // آخرین به‌روزرسانی نوار پیشرفت
+        if (totalBytes > 0) {
+          progressValue = 1.0;
+        }
 
-      if (isApk && !hasPrefix(bytes, <int>[80, 75])) {
-        throw Exception('فایل دریافتی معتبر نیست');
-      }
+        updateDialogState?.call(() {});
 
-      await file.writeAsBytes(bytes, flush: true);
-      await _manageCacheLimit();
+        if (sampleBytes.isEmpty) {
+          if (await partialFile.exists()) {
+            await partialFile.delete();
+          }
+
+          throw Exception('فایل دریافتی خالی است');
+        }
+
+        // بررسی پاسخ HTML گوگل‌درایو
+        if (contentType.contains('text/html') ||
+            looksLikeHtml(sampleBytes)) {
+          if (await partialFile.exists()) {
+            await partialFile.delete();
+          }
+
+          if (mounted &&
+              downloadDialogIsOpen &&
+              Navigator.of(
+                context,
+                rootNavigator: true,
+              ).canPop()) {
+            Navigator.of(
+              context,
+              rootNavigator: true,
+            ).pop();
+
+            downloadDialogIsOpen = false;
+          }
+
+          if (await canLaunchUrl(downloadUri)) {
+            await launchUrl(
+              downloadUri,
+              mode: LaunchMode.externalApplication,
+            );
+
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text(
+                    'به دلیل حجم بالای فایل و تأیید گوگل، '
+                    'دانلود در مرورگر آغاز شد.',
+                  ),
+                  backgroundColor: Colors.blue,
+                ),
+              );
+            }
+
+            return;
+          }
+
+          throw Exception(
+            'گوگل‌درایو به‌جای فایل، صفحهٔ HTML ارسال کرده است',
+          );
+        }
+
+        // بررسی معتبر بودن PDF
+        if (isPdf &&
+            !hasPrefix(
+              sampleBytes,
+              <int>[37, 80, 68, 70],
+            )) {
+          if (await partialFile.exists()) {
+            await partialFile.delete();
+          }
+
+          throw Exception('فایل دریافتی PDF معتبر نیست');
+        }
+
+        // بررسی معتبر بودن APK یا ZIP
+        if (isApk &&
+            !hasPrefix(
+              sampleBytes,
+              <int>[80, 75],
+            )) {
+          if (await partialFile.exists()) {
+            await partialFile.delete();
+          }
+
+          throw Exception('فایل دریافتی معتبر نیست');
+        }
+
+        // حذف نسخه قبلی در صورت وجود
+        if (await file.exists()) {
+          await file.delete();
+        }
+
+        // انتقال فایل کامل و معتبر به نام اصلی
+        await partialFile.rename(filePath);
+
+        await _manageCacheLimit();
+      } finally {
+        client.close();
+      }
     }
 
     // حفظ سیستم ثبت فایل خوانده‌شده
     await _markAsRead(item.id);
 
-    // به‌روزرسانی آیکون آماده‌بودن فایل برای استفادهٔ آفلاین
+    // به‌روزرسانی فهرست فایل‌های کش‌شده
     await _updateCachedFilesList();
 
     if (!mounted) return;
 
     if (downloadDialogIsOpen) {
-      Navigator.of(context, rootNavigator: true).pop();
+      Navigator.of(
+        context,
+        rootNavigator: true,
+      ).pop();
+
       downloadDialogIsOpen = false;
     }
 
     if (isApk) {
       final lower = fileName.toLowerCase();
+
       String? mimeType;
+
       if (lower.endsWith('.apk')) {
         mimeType = 'application/vnd.android.package-archive';
       } else if (lower.endsWith('.zip')) {
         mimeType = 'application/zip';
       }
-      await OpenFilex.open(filePath, type: mimeType);
+
+      await OpenFilex.open(
+        filePath,
+        type: mimeType,
+      );
     } else if (isPdf) {
       await Navigator.of(context).push(
         MaterialPageRoute(
@@ -970,19 +1193,31 @@ Future<void> _downloadAndOpen(
   } catch (e) {
     if (!mounted) return;
 
-    if (downloadDialogIsOpen) {
-      Navigator.of(context, rootNavigator: true).pop();
+    if (downloadDialogIsOpen &&
+        Navigator.of(
+          context,
+          rootNavigator: true,
+        ).canPop()) {
+      Navigator.of(
+        context,
+        rootNavigator: true,
+      ).pop();
+
       downloadDialogIsOpen = false;
     }
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('خطا در بارگیری یا پخش: ${e.toString().replaceAll("Exception: ", "")}'),
+        content: Text(
+          'خطا در بارگیری یا پخش: '
+          '${e.toString().replaceAll("Exception: ", "")}',
+        ),
         backgroundColor: Colors.redAccent,
       ),
     );
   }
 }
+  
   // مورد ۱: قابلیت «روزیِ من» (انتخاب تصادفی یک صوت یا متن)
   void _openDailyBlessing() {
     // انتخاب فقط از بین فایل‌های صوتی (سخنرانی‌ها)
