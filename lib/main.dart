@@ -761,44 +761,25 @@ String _getLocalFileName(
   bool isPdf = false,
   bool isApk = false,
 }) {
+  // حذف پسوند .bin که گوگل درایو گاهی اضافه می‌کند
   String fileName = item.name
-      .replaceAll(
-        RegExp(r'\.bin$', caseSensitive: false),
-        '',
-      )
+      .replaceAll(RegExp(r'\.bin$', caseSensitive: false), '')
       .trim();
 
-  // جلوگیری از ایجاد مسیرهای نامعتبر در اندروید
-  fileName = fileName
-      .replaceAll(
-        RegExp(r'[\\/:*?"<>|]'),
-        '_',
-      )
-      .trim();
+  // پاکسازی کاراکترهای غیرمجاز
+  fileName = fileName.replaceAll(RegExp(r'[\\/:*?"<>|]'), '_');
 
-  if (fileName.isEmpty) {
-    fileName = item.id;
+  final lower = fileName.toLowerCase();
+
+  // اگر فایل خودش پسوند استاندارد دارد، دست نزن (برای ZIP, APK, PDF)
+  if (lower.endsWith('.zip') || lower.endsWith('.apk') || lower.endsWith('.pdf')) {
+    return fileName;
   }
 
-  final lowerName = fileName.toLowerCase();
-
-  if (isPdf && !lowerName.endsWith('.pdf')) {
-    fileName = '$fileName.pdf';
-  } else if (isApk && !lowerName.endsWith('.apk')) {
-    fileName = '$fileName.apk';
-  } else if (!isPdf &&
-      !isApk &&
-      !lowerName.endsWith('.mp3') &&
-      !lowerName.endsWith('.m4a') &&
-      !lowerName.endsWith('.wav') &&
-      !lowerName.endsWith('.aac') &&
-      !lowerName.endsWith('.ogg') &&
-      !lowerName.endsWith('.flac')) {
-    // برای شناسایی مطمئن‌تر فایل صوتی توسط پلیر
-    fileName = '$fileName.mp3';
-  }
-
-  return fileName;
+  // اگر پسوند نداشت، بر اساس نوع تب پسوند بده
+  if (isApk) return '$fileName.apk';
+  if (isPdf) return '$fileName.pdf';
+  return '$fileName.mp3'; // پیش‌فرض برای صوت
 }
 
   Future<void> _downloadAndOpen(
@@ -898,7 +879,8 @@ String _getLocalFileName(
           'https://docs.google.com/uc?export=download&id=${item.id}&confirm=t',
         );
 
-        final response = await http.get(downloadUri).timeout(
+        
+        (downloadUri).timeout(
           const Duration(seconds: 90),
         );
 
@@ -913,6 +895,22 @@ String _getLocalFileName(
 
         final contentType = response.headers['content-type']?.toLowerCase() ?? '';
         if (contentType.contains('text/html') || looksLikeHtml(bytes)) {
+          if (mounted && Navigator.of(context, rootNavigator: true).canPop()) {
+            Navigator.of(context, rootNavigator: true).pop();
+          }
+
+          if (await canLaunchUrl(downloadUri)) {
+            await launchUrl(downloadUri, mode: LaunchMode.externalApplication);
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('به دلیل حجم بالای فایل و تأیید گوگل، دانلود در مرورگر آغاز شد.'),
+                  backgroundColor: Colors.blue,
+                ),
+              );
+            }
+            return;
+          }
           throw Exception('گوگل‌درایو به‌جای فایل، صفحهٔ HTML ارسال کرده است');
         }
 
@@ -927,7 +925,6 @@ String _getLocalFileName(
         await file.writeAsBytes(bytes, flush: true);
         await _manageCacheLimit();
       }
-
       // حفظ سیستم ثبت فایل خوانده‌شده
       await _markAsRead(item.id);
 
